@@ -1,0 +1,190 @@
+<!doctype html>
+<html>
+<head>
+  <base target="_top">
+  
+  <link href="https://fonts.googleapis.com/css?family=Sarabun:400,700&display=swap" rel="stylesheet">
+  
+  <style>
+    @page { size: A4 landscape;
+margin: 0.75in; }
+    
+    body { 
+      font-family: 'Sarabun', sans-serif;
+font-size: 16pt; 
+      line-height: 1.4;
+      font-weight: normal;
+    }
+    
+    h2, h3 {
+      font-size: 18pt;
+font-weight: bold;
+      text-align: center;
+      margin: 0 0 5px 0;
+    }
+    h3 { 
+      margin: 0 0 15px 0;
+    }
+    
+    .recorder-info {
+      font-size: 16pt;
+      margin-bottom: 10px;
+line-height: 1.5; 
+      word-wrap: break-word;
+    }
+    .recorder-info strong {
+      font-weight: bold;
+    }
+
+    .print-table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      font-size: 14pt;
+      table-layout: fixed;
+margin-top: 15px;
+    }
+    .print-table th, .print-table td { 
+      border: 1px solid #aaa;
+padding: 6px; 
+      text-align: left; 
+      vertical-align: top; 
+      word-wrap: break-word;
+    }
+    .print-table th { 
+      background-color: #eee;
+text-align: center; 
+      font-weight: bold;
+    }
+    .print-table img { display: none; } 
+    
+    .print-table p.topic-detail-text {
+      font-size: 12pt;
+      white-space: pre-wrap;
+      margin: 0;
+      padding: 0;
+    }
+
+    .footer-section {
+        font-size: 16pt;
+        margin-top: 15px;
+    }
+    .footer-section strong {
+        font-weight: bold;
+    }
+    .footer-section span {
+        font-weight: normal;
+        white-space: pre-wrap;
+        padding-left: 10px;
+    }
+    
+    .signature-div {
+      width: 100%; 
+      text-align: right;
+font-size: 16pt;
+      font-weight: bold;
+    }
+    .signature-div p { 
+        margin: 5px 0;
+padding: 0;
+        text-align: center;
+        width: 300px;
+        margin-left: auto;
+        margin-right: 0;
+    }
+  </style>
+</head>
+<body>
+  
+  <?
+    var topicsData;
+    try {
+        // ตรวจสอบการ Parse JSON
+        topicsData = JSON.parse(formData.communication_topics_json || '[]');
+    } catch (e) {
+        Logger.log('PDFtemplate JSON Parse Error: ' + e.message);
+        topicsData = [];
+    }
+  ?>
+  
+  <h2>รายงานการสื่อสารตามแผนการสื่อสารภายในและภายนอกองค์กรของผู้บริหาร ประจำปีงบประมาณ 2569</h2>
+  <h3>ประจำเดือน <?= formData.communication_month || '-' ?></h3>
+  
+  <div class="recorder-info">
+      <strong>ผู้จัดทำรายงาน:</strong> <?= formData.recorder_name || '' ?> <?= formData.recorder_surname || '' ?> &nbsp;&nbsp;
+      <strong>ตำแหน่ง:</strong> <?= formData.recorder_position || '...' ?> &nbsp;&nbsp;
+      <strong>สายงาน/หน่วยงาน:</strong> <?= formData.recorder_affiliation || '...' ?> / <?= formData.recorder_department || '...' ?> &nbsp;&nbsp;
+      <strong>โทรศัพท์:</strong> <?= formData.recorder_phone || '...' ?>
+  </div>
+  
+  <table class="print-table">
+    <thead>
+      <tr>
+        <th style="width: 15%;">ผู้ถ่ายทอดสาร</th>
+        <th style="width: 30%;">ประเด็นการสื่อสาร</th>
+        <th style="width: 20%;">ช่องทางการสื่อสาร</th>
+        <th style="width: 20%;">ผู้รับสาร</th>
+        <th style="width: 15%;">หลักฐาน (ถ้ามี)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <? topicsData.forEach((topic) => { ?>
+        <?
+          const executiveName = `${formData.executive_name || ''} ${formData.executive_surname || ''}`;
+          let evidenceText = 'ไม่มี';
+          
+          if (Array.isArray(topic.evidenceFiles) && topic.evidenceFiles.length > 0) {
+            
+            // แสดงเฉพาะลิงก์/ชื่อไฟล์
+            evidenceText = topic.evidenceFiles.map(f => {
+              if (!f || !f.name || !f.url) return 'ไฟล์มีปัญหา';
+              // แสดงเป็นลิงก์เท่านั้น
+              return `<a href="${f.url}" target="_blank" style="color: #000; text-decoration: underline; font-size: 10pt; display: block;">📄 ${f.name}</a>`;
+            }).join('');
+          }
+          
+          // ตรวจสอบว่าเป็น Array ก่อนใช้ .join() 
+          const selectedTopics = Array.isArray(topic.selectedTopics) ? topic.selectedTopics.join(', ') : '-';
+          const details = topic.details || '-';
+          
+          const internalChannels = Array.isArray(topic.internalChannels) ? topic.internalChannels : [];
+          const externalChannels = Array.isArray(topic.externalChannels) ? topic.externalChannels : [];
+          // 🚀 แก้ไข: ใช้ .concat() แทน Spread Syntax
+          const allChannels = internalChannels.concat(externalChannels).join(', ');
+          
+          const internalAudience = Array.isArray(topic.internalAudience) ? topic.internalAudience : [];
+          const externalAudience = Array.isArray(topic.externalAudience) ? topic.externalAudience : [];
+          // 🚀 แก้ไข: ใช้ .concat() แทน Spread Syntax
+          const allAudience = internalAudience.concat(externalAudience).join(', ');
+          
+        ?>
+        
+        <tr>
+          <td><?= executiveName ?></td>
+          <td><strong><?= selectedTopics ?></strong><hr style="margin: 4px 0;"><p class="topic-detail-text"><?= details ?></p></td>
+          <td><?= allChannels ?></td>
+          <td><?= allAudience ?></td>
+          <td><?= evidenceText ?></td> </tr>
+    
+      <? }); ?> </tbody>
+  </table>
+  
+  <div class="footer-section">
+      <div style="margin-bottom: 5px;">
+        <strong>ปัญหาและอุปสรรคในการสื่อสาร:</strong>
+        <span><?= formData.problems_obstacles || '-' ?></span>
+      </div>
+      <div>
+        <strong>ข้อเสนอแนะของผู้บริหารในการสื่อสาร:</strong>
+        <span><?= formData.executive_suggestions || '-' ?></span>
+      </div>
+  </div>
+  
+  <br><br><br>
+  
+  <div class="signature-div">
+      <p><?= formData.executive_name || '' ?> <?= formData.executive_surname || '' ?></p>
+      <p><?= formData.executive_position || '...' ?></p>
+  </div>
+  
+</body>
+</html>

@@ -1,0 +1,1518 @@
+<!doctype html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบรายงานแผนการสื่อสารผู้บริหาร</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Sarabun', Arial, sans-serif;
+            margin: 0; padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px; margin: 20px auto;
+            background: white; border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white; padding: 20px 30px; text-align: center; border-radius: 8px 8px 0 0;
+        }
+        .header h1 { margin: 0; font-size: 24px; font-weight: 600; }
+        .tabs { display: flex; background: #f8f9fa; border-bottom: 2px solid #e9ecef; }
+        .tab {
+            flex: 1; padding: 15px 20px; background: #f8f9fa; border: none;
+            cursor: pointer; font-size: 16px; font-weight: 500; color: #495057;
+            transition: all 0.3s ease; border-bottom: 3px solid transparent;
+        }
+        .tab:hover { background: #e9ecef; color: #2c3e50; }
+        .tab.active { background: white; color: #2c3e50; border-bottom-color: #3498db; }
+        .tab-content { display: none; padding: 30px; }
+        .tab-content.active { display: block; }
+        .form-section {
+            background: #ffffff; padding: 25px; margin-bottom: 25px;
+            border-radius: 12px; border: 1px solid #e9ecef;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .form-section h3 {
+            margin: 0 0 20px 0; color: #2c3e50; font-size: 20px; font-weight: 700;
+            padding-bottom: 10px; border-bottom: 2px solid #3498db;
+        }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { font-weight: 500; margin-bottom: 8px; color: #2c3e50; }
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 12px 16px; border: 1px solid #dee2e6; border-radius: 8px;
+            font-size: 14px; transition: all 0.3s ease; background: #f8f9fa;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none; border-color: #3498db; background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(52,152,219,0.1);
+        }
+        .form-group select:disabled { background: #e9ecef; color: #6c757d; }
+        .form-group textarea { min-height: 80px; resize: vertical; }
+        .btn {
+            padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer;
+            font-size: 16px; font-weight: 600; transition: all 0.3s ease; margin: 5px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; }
+        .btn-primary:hover { background: linear-gradient(135deg, #2980b9 0%, #1f5f8b 100%); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(52,152,219,0.3); }
+        .btn-success { background: linear-gradient(135deg, #27ae60 0%, #229954 100%); color: white; }
+        .btn-success:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(39,174,96,0.3); }
+        .btn-warning { background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); color: white; }
+        .btn-warning:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(243,156,18,0.3); }
+        .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; }
+        .step-indicator::before {
+            content: ''; position: absolute; top: 50%; left: 20px; right: 20px;
+            height: 2px; background: #e9ecef; z-index: 1; transform: translateY(-50%);
+        }
+        .step {
+            flex: 1; text-align: center; padding: 10px; background: #ffffff;
+            border-radius: 8px; font-weight: 600; color: #6c757d;
+            border: 2px solid #e9ecef; position: relative; z-index: 2; transition: all 0.3s ease;
+        }
+        .step.active { border-color: #3498db; color: #3498db; box-shadow: 0 4px 12px rgba(52,152,219,0.1); }
+        .step.completed { border-color: #27ae60; color: #27ae60; }
+        .hidden { display: none; }
+        .loading { display: none; text-align: center; padding: 20px; color: #666; }
+        .loading.show { display: block; }
+        .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .checkbox-list { display: flex; flex-direction: column; gap: 8px; }
+        .checkbox-item {
+            display: flex; align-items: flex-start; gap: 10px; padding: 10px;
+            border: 1px solid #e9ecef; border-radius: 6px; cursor: pointer;
+            transition: all 0.3s ease; background: #ffffff;
+        }
+        .checkbox-item:hover { background: #f8f9fa; border-color: #3498db; }
+        .checkbox-item input[type="checkbox"] { margin: 2px 0 0 0; width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+        .checkbox-item span { font-size: 14px; line-height: 1.4; color: #2c3e50; }
+        .communication-topic-item {
+            background: #ffffff; border: 1px solid #e9ecef; border-radius: 12px;
+            padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .topic-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e9ecef;
+        }
+        .topic-number { background: #3498db; color: white; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 14px; }
+        .remove-topic-btn { background: #e74c3c; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        .topic-selection-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 8px; margin-bottom: 15px; max-height: 300px; overflow-y: auto;
+            border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; background: #f8f9fa;
+        }
+        .selected-topics-display { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 10px; min-height: 40px; margin-bottom: 15px; }
+        .selected-topics-display .topic-tag { display: inline-block; background: #3498db; color: white; padding: 4px 10px; margin: 2px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+        .selected-topics-display .no-selection { color: #6c757d; font-style: italic; font-size: 14px; }
+
+        /* 🚀 สไตล์ Evidence Links */
+        .evidence-links-container { margin-top: 5px; }
+        .evidence-link-row {
+            display: flex; align-items: center; gap: 8px;
+            margin-bottom: 8px;
+        }
+        .evidence-link-row input {
+            flex: 1; padding: 10px 14px; border: 1px solid #dee2e6;
+            border-radius: 8px; font-size: 14px; background: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+        .evidence-link-row input:focus {
+            outline: none; border-color: #3498db; background: #fff;
+            box-shadow: 0 0 0 3px rgba(52,152,219,0.1);
+        }
+        .evidence-link-row input.invalid-url {
+            border-color: #e74c3c;
+            background: #fff5f5;
+        }
+        .btn-remove-link {
+            background: #e74c3c; color: white; border: none;
+            border-radius: 6px; width: 32px; height: 32px;
+            cursor: pointer; font-size: 18px; font-weight: bold;
+            flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+        }
+        .btn-remove-link:hover { background: #c0392b; }
+        .btn-add-link {
+            background: #ecf0f1; color: #2c3e50; border: 1px dashed #bdc3c7;
+            border-radius: 8px; padding: 8px 16px; cursor: pointer;
+            font-size: 13px; font-weight: 500; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 6px; margin-top: 4px;
+        }
+        .btn-add-link:hover { background: #dfe6e9; border-color: #3498db; color: #3498db; }
+        .link-count-badge {
+            font-size: 12px; color: #7f8c8d; margin-top: 4px; margin-left: 2px;
+        }
+
+        .btn-action { padding: 8px; border: none; border-radius: 6px; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; }
+        .btn-view { background: #17a2b8; color: white; }
+        .btn-edit { background: #ffc107; color: #212529; }
+        .btn-delete { background: #dc3545; color: white; }
+        .btn-pagination { padding: 8px 12px; border: 1px solid #dee2e6; background: white; color: #495057; border-radius: 6px; cursor: pointer; }
+        .btn-pagination:hover:not(:disabled) { background: #e9ecef; }
+        .btn-pagination.active { background: #3498db; color: white; border-color: #3498db; }
+        .btn-pagination:disabled { opacity: 0.5; cursor: not-allowed; }
+        .search-filter-section .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 0; }
+
+        #print-section { display: none; }
+        @media print {
+            @page { size: A4 landscape; margin: 0.75in; }
+            body > * { display: none !important; }
+            #print-section { display: block !important; position: absolute; top: 0; left: 0; width: 100%; }
+            #print-section { font-family: 'TH Sarabun New', 'Sarabun', sans-serif; font-size: 16pt; line-height: 1.4; }
+            #print-section h2, #print-section h3 { font-weight: bold; font-size: 18pt; text-align: center; margin: 0 0 5px 0; }
+            #print-section h3 { margin: 0 0 15px 0; }
+            .recorder-info { font-size: 16pt; line-height: 1.5; word-wrap: break-word; margin-bottom: 15px; }
+            .recorder-info strong { font-weight: bold; }
+            .footer-section { font-size: 16pt; }
+            .footer-section strong { font-weight: bold; }
+            .footer-section span { white-space: pre-wrap; padding-left: 10px; }
+            .print-table { width: 100%; border-collapse: collapse; font-size: 14pt; table-layout: fixed; }
+            .print-table th, .print-table td { border: 1px solid #000; padding: 6px; text-align: left; vertical-align: top; word-wrap: break-word; }
+            .print-table th { background-color: #eee; text-align: center; font-weight: bold; }
+            .print-table p.topic-detail-text { font-size: 12pt; white-space: pre-wrap; margin: 0; padding: 0; }
+            .signature-block { width: 100%; text-align: right; margin-top: 30px; }
+            .signature-block p { font-weight: bold; font-size: 16pt; margin: 5px 0; text-align: center; width: 400px; margin-left: auto; margin-right: 0; }
+        }
+
+        .dashboard-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 12px; margin-bottom: 25px; text-align: center; }
+        .dashboard-controls { background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #e9ecef; }
+        .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .summary-card { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); color: white; padding: 25px; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(52,152,219,0.3); }
+        .summary-card div:first-child { font-size: 36px; margin-bottom: 10px; }
+        .summary-card div:nth-child(2) { font-size: 32px; font-weight: 700; margin-bottom: 5px; }
+        .summary-card div:nth-child(3) { font-size: 14px; opacity: 0.9; }
+        .charts-section { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 25px; margin-bottom: 30px; }
+        .chart-container { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e9ecef; min-height: 400px; position: relative; }
+        .chart-container h3 { margin: 0 0 20px 0; color: #2c3e50; font-size: 18px; font-weight: 600; }
+        .canvas-container { position: relative; width: 100%; height: 350px; }
+        #department-status-list { padding-right: 15px; }
+        .aff-group { margin-bottom: 20px; }
+        .aff-header { font-size: 16px; font-weight: 600; color: #2c3e50; padding-bottom: 8px; margin-bottom: 10px; border-bottom: 2px solid #3498db; }
+        .dept-item { display: flex; align-items: center; padding: 6px 0; font-size: 14px; border-bottom: 1px solid #f0f0f0; }
+        .dept-item:last-child { border-bottom: none; }
+        .dept-item .status { font-size: 16px; margin-right: 10px; flex-shrink: 0; }
+        .dept-item .status-submitted { color: #27ae60; }
+        .dept-item .status-pending { color: #f39c12; }
+        .dept-item .dept-name { color: #34495e; }
+        .dept-item .dept-name-pending { color: #7f8c8d; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>ระบบรายงานแผนการสื่อสารภายในและภายนอกองค์กรของผู้บริหาร ปีงบประมาณ 2569</h1>
+        </header>
+        <nav class="tabs">
+            <button class="tab active" onclick="showTab('form')">บันทึกข้อมูล</button>
+            <button class="tab" onclick="showTab('data'); fetchAndRenderData()">ข้อมูลการสื่อสาร</button>
+            <button class="tab" onclick="showTab('dashboard');">Dashboard</button>
+        </nav>
+
+        <div id="form-tab" class="tab-content active">
+            <div class="step-indicator">
+                <div class="step active" id="step1">1. ข้อมูลผู้บันทึก</div>
+                <div class="step" id="step2">2. ข้อมูลผู้บริหาร</div>
+                <div class="step" id="step3">3. รายละเอียดการสื่อสาร</div>
+                <div class="step" id="step4">4. ปัญหาและข้อเสนอแนะ</div>
+            </div>
+            
+            <form id="communication-form">
+                <div id="form-step-1" class="form-step">
+                    <div class="form-section">
+                        <h3>1. ข้อมูลผู้บันทึก</h3>
+                        <div class="form-row">
+                            <div class="form-group"><label for="recorder-name">ชื่อผู้บันทึกข้อมูล *</label><input type="text" id="recorder-name" required></div>
+                            <div class="form-group"><label for="recorder-surname">นามสกุลผู้บันทึกข้อมูล *</label><input type="text" id="recorder-surname" required></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label for="recorder-position">ตำแหน่งผู้บันทึกข้อมูล *</label><input type="text" id="recorder-position" required></div>
+                            <div class="form-group"><label for="recorder-affiliation">สายงานของผู้บันทึกข้อมูล *</label>
+                                <select id="recorder-affiliation" required onchange="updateDepartments('recorder-affiliation', 'recorder-department')">
+                                    <option value="">เลือกสายงาน</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label for="recorder-department">หน่วยงานของผู้บันทึกข้อมูล *</label>
+                                <select id="recorder-department" required disabled><option value="">เลือกสายงานก่อน</option></select>
+                            </div>
+                            <div class="form-group"><label for="recorder-phone">เบอร์โทรศัพท์ *</label><input type="tel" id="recorder-phone" required></div>
+                        </div>
+                        <div class="form-group"><label for="recorder-email">อีเมล *</label><input type="email" id="recorder-email" required></div>
+                    </div>
+                    <div style="text-align:center;"><button type="button" class="btn btn-primary" onclick="nextStep(2)">ถัดไป</button></div>
+                </div>
+
+                <div id="form-step-2" class="form-step hidden">
+                    <div class="form-section">
+                        <h3>2. ข้อมูลผู้บริหาร</h3>
+                        <div class="form-group"><label for="communication-month">เดือนที่ทำการสื่อสาร *</label>
+                            <select id="communication-month" required>
+                                <option value="">เลือกเดือน</option>
+                                <option value="ตุลาคม 2568">ตุลาคม 2568</option>
+                                <option value="พฤศจิกายน 2568">พฤศจิกายน 2568</option>
+                                <option value="ธันวาคม 2568">ธันวาคม 2568</option>
+                                <option value="มกราคม 2569">มกราคม 2569</option>
+                                <option value="กุมภาพันธ์ 2569">กุมภาพันธ์ 2569</option>
+                                <option value="มีนาคม 2569">มีนาคม 2569</option>
+                                <option value="เมษายน 2569">เมษายน 2569</option>
+                                <option value="พฤษภาคม 2569">พฤษภาคม 2569</option>
+                                <option value="มิถุนายน 2569">มิถุนายน 2569</option>
+                                <option value="กรกฎาคม 2569">กรกฎาคม 2569</option>
+                                <option value="สิงหาคม 2569">สิงหาคม 2569</option>
+                                <option value="กันยายน 2569">กันยายน 2569</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label for="executive-name">ชื่อผู้บริหาร *</label><input type="text" id="executive-name" required></div>
+                            <div class="form-group"><label for="executive-surname">นามสกุลผู้บริหาร *</label><input type="text" id="executive-surname" required></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label for="executive-position">ตำแหน่งผู้บริหาร *</label><input type="text" id="executive-position" required></div>
+                            <div class="form-group"><label for="executive-affiliation">สายงานของผู้บริหาร *</label>
+                                <select id="executive-affiliation" required onchange="updateDepartments('executive-affiliation', 'executive-department')">
+                                    <option value="">เลือกสายงาน</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group"><label for="executive-department">หน่วยงานของผู้บริหาร *</label>
+                            <select id="executive-department" required disabled><option value="">เลือกสายงานก่อน</option></select>
+                        </div>
+                    </div>
+                    <div style="text-align:center;">
+                        <button type="button" class="btn btn-warning" onclick="prevStep(1)">ย้อนกลับ</button>
+                        <button type="button" class="btn btn-primary" onclick="nextStep(3)">ถัดไป</button>
+                    </div>
+                </div>
+
+                <div id="form-step-3" class="form-step hidden">
+                    <div class="form-section">
+                        <h3>3. รายละเอียดการสื่อสาร (สามารถเพิ่มได้สูงสุด 30 ประเด็น)</h3>
+                        <div id="communication-topics-container"></div>
+                        <div style="text-align:center; margin-top:20px;">
+                            <button type="button" class="btn btn-primary" onclick="addCommunicationTopic()">+ เพิ่มประเด็นการสื่อสาร</button>
+                        </div>
+                    </div>
+                    <div style="text-align:center;">
+                        <button type="button" class="btn btn-warning" onclick="prevStep(2)">ย้อนกลับ</button>
+                        <button type="button" class="btn btn-primary" onclick="nextStep(4)">ถัดไป</button>
+                    </div>
+                </div>
+
+                <div id="form-step-4" class="form-step hidden">
+                    <div class="form-section">
+                        <h3>4. ปัญหาและข้อเสนอแนะ</h3>
+                        <div class="form-group"><label for="problems-obstacles">ปัญหาและอุปสรรค์ในการสื่อสาร</label><textarea id="problems-obstacles" placeholder="กรุณากรอกปัญหาและอุปสรรค์ที่พบในการสื่อสาร (ถ้ามี)"></textarea></div>
+                        <div class="form-group"><label for="executive-suggestions">ข้อเสนอแนะของผู้บริหารในการสื่อสาร</label><textarea id="executive-suggestions" placeholder="กรุณากรอกข้อเสนอแนะของผู้บริหารเกี่ยวกับการสื่อสาร (ถ้ามี)"></textarea></div>
+                    </div>
+                    <div style="text-align:center;">
+                        <button type="button" class="btn btn-warning" onclick="prevStep(3)">ย้อนกลับ</button>
+                        <button type="submit" class="btn btn-success">บันทึกข้อมูล</button>
+                    </div>
+                </div>
+            </form>
+            <div id="loading" class="loading"><p>กำลังบันทึกข้อมูล...</p></div>
+        </div>
+
+        <div id="data-tab" class="tab-content">
+            <div class="form-section">
+                <h3>ค้นหาและกรองข้อมูล</h3>
+                <div class="search-filter-section">
+                    <div class="form-row">
+                        <div class="form-group"><label for="search-month">เลือกเดือน</label>
+                            <select id="search-month" onchange="filterData()">
+                                <option value="">ทุกเดือน</option>
+                                <option value="ตุลาคม 2568">ตุลาคม 2568</option>
+                                <option value="พฤศจิกายน 2568">พฤศจิกายน 2568</option>
+                                <option value="ธันวาคม 2568">ธันวาคม 2568</option>
+                                <option value="มกราคม 2569">มกราคม 2569</option>
+                                <option value="กุมภาพันธ์ 2569">กุมภาพันธ์ 2569</option>
+                                <option value="มีนาคม 2569">มีนาคม 2569</option>
+                                <option value="เมษายน 2569">เมษายน 2569</option>
+                                <option value="พฤษภาคม 2569">พฤษภาคม 2569</option>
+                                <option value="มิถุนายน 2569">มิถุนายน 2569</option>
+                                <option value="กรกฎาคม 2569">กรกฎาคม 2569</option>
+                                <option value="สิงหาคม 2569">สิงหาคม 2569</option>
+                                <option value="กันยายน 2569">กันยายน 2569</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label for="search-affiliation">สายงาน</label>
+                            <select id="search-affiliation" onchange="updateSearchDepartments(); filterData()">
+                                <option value="">ทุกสายงาน</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label for="search-department">หน่วยงาน</label>
+                            <select id="search-department" onchange="filterData()" disabled>
+                                <option value="">ทุกหน่วยงาน</option>
+                            </select>
+                        </div>
+                        <div class="form-group"><label for="search-text">ค้นหาข้อมูล</label>
+                            <input type="text" id="search-text" placeholder="ค้นหาจากชื่อผู้บริหาร, ประเด็น..." oninput="filterData()">
+                        </div>
+                    </div>
+                    <div style="text-align:center; margin-top:15px;">
+                        <button type="button" class="btn btn-primary" onclick="resetFilters()">รีเซ็ตการค้นหา</button>
+                    </div>
+                </div>
+            </div>
+            <div class="table-container" style="overflow-x:auto; border:1px solid #e9ecef; border-radius:8px; background:white;">
+                <table id="communication-data-table" style="width:100%; border-collapse:collapse; min-width:1200px;">
+                    <thead style="background:#34495e; color:white;">
+                        <tr>
+                            <th style="padding:15px 10px; text-align:center; min-width:50px;">ลำดับ</th>
+                            <th style="padding:15px 10px; text-align:center; min-width:120px;">เดือน</th>
+                            <th style="padding:15px 10px; text-align:left; min-width:200px;">ผู้ถ่ายทอดสาร</th>
+                            <th style="padding:15px 10px; text-align:left; min-width:250px;">ประเด็นการสื่อสาร</th>
+                            <th style="padding:15px 10px; text-align:left; min-width:200px;">ช่องทาง</th>
+                            <th style="padding:15px 10px; text-align:left; min-width:200px;">ผู้รับสาร</th>
+                            <th style="padding:15px 10px; text-align:center; min-width:150px;">หลักฐาน</th>
+                            <th style="padding:15px 10px; text-align:left; min-width:150px;">ผู้บันทึก</th>
+                            <th style="padding:15px 10px; text-align:center; min-width:100px;">วันที่บันทึก</th>
+                            <th style="padding:15px 10px; text-align:center; min-width:120px;">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="communication-data-tbody"></tbody>
+                </table>
+            </div>
+            <div id="no-data-message" class="hidden" style="text-align:center; padding:40px; color:#666;">
+                <h4>ไม่พบข้อมูลที่ค้นหา</h4>
+                <p>ลองปรับเปลี่ยนเงื่อนไขการค้นหาหรือรีเซ็ตการค้นหา</p>
+            </div>
+            <div class="pagination-container" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding:15px; background:#f8f9fa; border-radius:8px;">
+                <div style="color:#666; font-size:14px;">แสดง <span id="showing-start">0</span>-<span id="showing-end">0</span> จาก <span id="total-records">0</span> รายการ</div>
+                <div class="pagination-buttons" style="display:flex; gap:5px;"></div>
+            </div>
+        </div>
+
+        <div id="dashboard-tab" class="tab-content">
+            <div class="dashboard-header">
+                <h2 style="margin:0 0 10px 0; font-size:28px; font-weight:700;">📊 Dashboard - สรุปข้อมูลการสื่อสาร</h2>
+            </div>
+            <div class="dashboard-controls">
+                <div class="form-row">
+                    <div class="form-group"><label for="dashboard-month-filter">เลือกเดือน</label>
+                        <select id="dashboard-month-filter" onchange="filterDashboardData()">
+                            <option value="">ทุกเดือน</option>
+                            <option value="ตุลาคม 2568">ตุลาคม 2568</option>
+                            <option value="พฤศจิกายน 2568">พฤศจิกายน 2568</option>
+                            <option value="ธันวาคม 2568">ธันวาคม 2568</option>
+                            <option value="มกราคม 2569">มกราคม 2569</option>
+                            <option value="กุมภาพันธ์ 2569">กุมภาพันธ์ 2569</option>
+                            <option value="มีนาคม 2569">มีนาคม 2569</option>
+                            <option value="เมษายน 2569">เมษายน 2569</option>
+                            <option value="พฤษภาคม 2569">พฤษภาคม 2569</option>
+                            <option value="มิถุนายน 2569">มิถุนายน 2569</option>
+                            <option value="กรกฎาคม 2569">กรกฎาคม 2569</option>
+                            <option value="สิงหาคม 2569">สิงหาคม 2569</option>
+                            <option value="กันยายน 2569">กันยายน 2569</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label for="dashboard-affiliation-filter">สายงาน</label>
+                        <select id="dashboard-affiliation-filter" onchange="filterDashboardData()">
+                            <option value="">ทุกสายงาน</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="justify-content:flex-end; align-items:flex-end;">
+                        <button type="button" class="btn btn-warning" onclick="resetDashboardFilters()">รีเซ็ต</button>
+                    </div>
+                </div>
+            </div>
+            <div class="summary-cards">
+                <div class="summary-card" style="background:linear-gradient(135deg,#3498db 0%,#2980b9 100%);">
+                    <div>📊</div><div id="total-reports">0</div><div>รายงานทั้งหมด</div>
+                </div>
+                <div class="summary-card" style="background:linear-gradient(135deg,#27ae60 0%,#229954 100%);">
+                    <div>✅</div><div id="completed-departments">0</div><div>สายงานที่ส่งรายงาน</div>
+                </div>
+                <div class="summary-card" style="background:linear-gradient(135deg,#f39c12 0%,#e67e22 100%);">
+                    <div>⏳</div><div id="pending-departments">0</div><div>สายงานที่ยังไม่ส่ง</div>
+                </div>
+                <div class="summary-card" style="background:linear-gradient(135deg,#e74c3c 0%,#c0392b 100%);">
+                    <div>📈</div><div id="completion-rate">0%</div><div>อัตราการส่งรายงาน</div>
+                </div>
+            </div>
+            <div class="charts-section">
+                <div class="chart-container"><h3>สถานะการส่งรายงานตามสายงาน</h3><div class="canvas-container"><canvas id="departmentChart"></canvas></div></div>
+                <div class="chart-container"><h3>ประเด็นการสื่อสารยอดนิยม</h3><div class="canvas-container"><canvas id="topicsChart"></canvas></div></div>
+                <div class="chart-container"><h3>ช่องทางการสื่อสาร</h3><div class="canvas-container"><canvas id="channelsChart"></canvas></div></div>
+                <div class="chart-container"><h3>กลุ่มผู้รับสาร</h3><div class="canvas-container"><canvas id="audienceChart"></canvas></div></div>
+            </div>
+            <div class="charts-section" style="grid-template-columns:1fr;">
+                <div class="chart-container" style="min-height:300px;">
+                    <h3>สถานะการส่งรายหน่วยงาน (ตาม Filter)</h3>
+                    <div id="department-status-list" style="height:400px; overflow-y:auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print Section -->
+    <div id="print-section">
+        <h2>รายงานการสื่อสารตามแผนการสื่อสารภายในและภายนอกองค์กรของผู้บริหาร ประจำปีงบประมาณ 2569</h2>
+        <h3>ประจำเดือน <span id="print-month">[เดือน]</span></h3>
+        <div class="recorder-info">
+            <strong>ผู้จัดทำเอกสาร:</strong> <span id="print-recorder-name">...</span> &nbsp;&nbsp;
+            <strong>ตำแหน่ง:</strong> <span id="print-recorder-position">...</span> &nbsp;&nbsp;
+            <strong>สายงาน/หน่วยงาน:</strong> <span id="print-recorder-affiliation">...</span> / <span id="print-recorder-department">...</span> &nbsp;&nbsp;
+            <strong>โทรศัพท์:</strong> <span id="print-recorder-phone">...</span>
+        </div>
+        <table class="print-table">
+            <thead>
+                <tr>
+                    <th style="width:15%;">ผู้ถ่ายทอดสาร</th>
+                    <th style="width:30%;">ประเด็นการสื่อสาร</th>
+                    <th style="width:20%;">ช่องทางการสื่อสาร</th>
+                    <th style="width:20%;">ผู้รับสาร</th>
+                    <th style="width:15%;">หลักฐาน (ถ้ามี)</th>
+                </tr>
+            </thead>
+            <tbody id="print-table-body"></tbody>
+        </table>
+        <br>
+        <div class="footer-section">
+            <p><strong>ปัญหาและอุปสรรคในการสื่อสาร:</strong> <span id="print-problems">-</span></p>
+            <p><strong>ข้อเสนอแนะของผู้บริหารในการสื่อสาร:</strong> <span id="print-suggestions">-</span></p>
+        </div>
+        <br><br>
+        <div class="signature-block">
+            <p id="print-exec-name">...</p>
+            <p id="print-exec-position">...</p>
+        </div>
+    </div>
+
+<script>
+    let currentStep = 1;
+    let communicationTopicsCount = 0;
+    const maxTopics = 30;
+    const MAX_LINKS_PER_TOPIC = 5;
+    let ALL_DATA = [];
+    let currentFilteredData = [];
+    let currentPage = 1;
+    const rowsPerPage = 20;
+    let departmentData = {};
+
+    const communicationTopicsData = [
+        "Water Safety Plan/การสร้างความเชื่อมั่นด้านคุณภาพน้ำประปา",
+        "งานบริการของ กปน. (Digital Service)",
+        "การลดน้ำสูญเสีย",
+        "วิสัยทัศน์ พันธกิจ ค่านิยม",
+        "การใช้น้ำอย่างรู้คุณค่าและฉลากประหยัดน้ำ",
+        "ธรรมาภิบาลและจริยธรรม",
+        "Digital MWA",
+        "การบริหารความเสี่ยงและควบคุมภายใน",
+        "การส่งเสริมนวัตกรรม",
+        "การจัดการความรู้ (KM)",
+        "การเปลี่ยนแปลงสภาพแวดล้อมภายนอกที่สำคัญ",
+        "การรณรงค์ลดปริมาณการปล่อยก๊าซเรือนกระจก (CO2)",
+        "โครงสร้างพื้นฐานระบบประปา",
+        "การดำเนินธุรกิจที่เกี่ยวเนื่อง",
+        "ความผูกพันธ์องค์กร",
+        "การดำเนินงานด้านความปลอดภัย",
+        "การบริหารความต่อเนื่องทางธุรกิจ (BCMS)",
+        "การยกระดับบุคลากรสู่ความเป็นเลิศในการปฏิบัติงาน"
+    ];
+
+    // ===================================================================
+    // === 🚀 ฟังก์ชันจัดการ Google Drive Links ===
+    // ===================================================================
+
+    function addEvidenceLink(topicId) {
+        const container = document.getElementById(`evidence-links-${topicId}`);
+        const currentLinks = container.querySelectorAll('.evidence-link-row');
+        if (currentLinks.length >= MAX_LINKS_PER_TOPIC) {
+            Swal.fire({
+                title: 'ครบแล้ว',
+                text: `เพิ่มได้สูงสุด ${MAX_LINKS_PER_TOPIC} ลิงก์ต่อประเด็น`,
+                icon: 'warning', confirmButtonText: 'ตกลง'
+            });
+            return;
+        }
+        const linkIndex = Date.now();
+        const row = document.createElement('div');
+        row.className = 'evidence-link-row';
+        row.id = `link-row-${topicId}-${linkIndex}`;
+        row.innerHTML = `
+            <input type="url" placeholder="วาง Google Drive link ที่นี่ เช่น https://drive.google.com/..."
+                   oninput="validateDriveLink(this)">
+            <button type="button" class="btn-remove-link" onclick="removeEvidenceLink('${topicId}', '${topicId}-${linkIndex}')" title="ลบลิงก์นี้">×</button>
+        `;
+        container.appendChild(row);
+        updateLinkCount(topicId);
+        row.querySelector('input').focus();
+    }
+
+    function removeEvidenceLink(topicId, rowSuffix) {
+        const row = document.getElementById(`link-row-${rowSuffix}`);
+        if (row) row.remove();
+        updateLinkCount(topicId);
+    }
+
+    function updateLinkCount(topicId) {
+        const container = document.getElementById(`evidence-links-${topicId}`);
+        const count = container.querySelectorAll('.evidence-link-row').length;
+        const badge = document.getElementById(`link-count-${topicId}`);
+        if (badge) badge.textContent = `${count}/${MAX_LINKS_PER_TOPIC} ลิงก์`;
+        const addBtn = document.getElementById(`add-link-btn-${topicId}`);
+        if (addBtn) addBtn.style.display = count >= MAX_LINKS_PER_TOPIC ? 'none' : 'inline-flex';
+    }
+
+    function validateDriveLink(input) {
+        const val = input.value.trim();
+        if (val === '') {
+            input.classList.remove('invalid-url');
+            return;
+        }
+        // ตรวจว่าเป็น URL จริงๆ
+        const isDriveOrValid = val.startsWith('http://') || val.startsWith('https://');
+        input.classList.toggle('invalid-url', !isDriveOrValid);
+    }
+
+    function getEvidenceLinks(topicId) {
+        const container = document.getElementById(`evidence-links-${topicId}`);
+        const inputs = container.querySelectorAll('.evidence-link-row input');
+        return Array.from(inputs)
+            .map(input => input.value.trim())
+            .filter(url => url !== '' && (url.startsWith('http://') || url.startsWith('https://')));
+    }
+
+    // ===================================================================
+    // === ฟังก์ชัน collectFormData (ปรับใหม่ ไม่มี uploadFiles แล้ว) ===
+    // ===================================================================
+
+    function collectFormData() {
+        const formData = {};
+        formData.recorder_name = document.getElementById('recorder-name').value.trim();
+        formData.recorder_surname = document.getElementById('recorder-surname').value.trim();
+        formData.recorder_position = document.getElementById('recorder-position').value.trim();
+        formData.recorder_affiliation = document.getElementById('recorder-affiliation').value;
+        formData.recorder_department = document.getElementById('recorder-department').value;
+        formData.recorder_phone = document.getElementById('recorder-phone').value.trim();
+        formData.recorder_email = document.getElementById('recorder-email').value.trim();
+        formData.communication_month = document.getElementById('communication-month').value;
+        formData.executive_name = document.getElementById('executive-name').value.trim();
+        formData.executive_surname = document.getElementById('executive-surname').value.trim();
+        formData.executive_position = document.getElementById('executive-position').value.trim();
+        formData.executive_affiliation = document.getElementById('executive-affiliation').value;
+        formData.executive_department = document.getElementById('executive-department').value;
+
+        const topics = [];
+        for (let i = 1; i <= communicationTopicsCount; i++) {
+            const topicItem = document.getElementById(`topic-item-${i}`);
+            if (!topicItem) continue;
+            const topicData = {};
+            topicData.number = i;
+            topicData.selectedTopics = Array.from(topicItem.querySelectorAll(`input[name="topics-${i}"]:checked`)).map(cb => cb.value);
+            topicData.details = document.getElementById(`communication-details-${i}`).value.trim();
+            topicData.isInternal = document.getElementById(`communication-type-internal-${i}`).checked;
+            topicData.isExternal = document.getElementById(`communication-type-external-${i}`).checked;
+            topicData.internalChannels = Array.from(topicItem.querySelectorAll(`input[name="internal-channels-${i}"]:checked`)).map(cb => {
+                if (cb.value === 'อื่นๆ') return `อื่นๆ: ${document.getElementById(`other-internal-text-${i}`).value.trim()}`;
+                return cb.value;
+            });
+            topicData.externalChannels = Array.from(topicItem.querySelectorAll(`input[name="external-channels-${i}"]:checked`)).map(cb => {
+                if (cb.value === 'อื่นๆ') return `อื่นๆ: ${document.getElementById(`other-external-text-${i}`).value.trim()}`;
+                return cb.value;
+            });
+            topicData.internalAudience = Array.from(topicItem.querySelectorAll(`input[name="internal-audience-${i}"]:checked`)).map(cb => {
+                const detailInput = document.querySelector(`#internal-staff-detail-${i} input`);
+                const detail = detailInput ? detailInput.value.trim() : '';
+                return detail ? `${cb.value} (${detail})` : cb.value;
+            });
+            topicData.externalAudience = [];
+            topicItem.querySelectorAll(`input[name="external-audience-${i}"]:checked`).forEach(cb => {
+                const onchangeAttr = cb.getAttribute('onchange') || '';
+                const match = onchangeAttr.match(/toggleAudienceDetail\('external', '(\w+)', \d+\)/);
+                if (match) {
+                    const detailInput = document.querySelector(`#external-${match[1]}-detail-${i} input`);
+                    const detail = detailInput ? detailInput.value.trim() : '';
+                    topicData.externalAudience.push(detail ? `${cb.value} (${detail})` : cb.value);
+                } else {
+                    topicData.externalAudience.push(cb.value);
+                }
+            });
+
+            // 🚀 ดึง Google Drive Links แทนไฟล์
+            topicData.evidenceLinks = getEvidenceLinks(i);
+
+            topicData.additionalDetails = document.getElementById(`additional-details-${i}`).value.trim();
+            topics.push(topicData);
+        }
+
+        formData.communication_topics_json = JSON.stringify(topics);
+        formData.problems_obstacles = document.getElementById('problems-obstacles').value.trim();
+        formData.executive_suggestions = document.getElementById('executive-suggestions').value.trim();
+        formData.id = `rec_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        formData.created_date = new Date().toLocaleDateString('th-TH', {
+            year: 'numeric', month: 'numeric', day: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+        }).replace(',', '');
+        return formData;
+    }
+
+    // ===================================================================
+    // === Submit Form (ปรับใหม่ ไม่มี uploadFiles) ===
+    // ===================================================================
+
+    document.getElementById('communication-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!validateFinalSubmission()) return;
+
+        showLoading(true);
+        const formData = collectFormData();
+
+        google.script.run
+            .withSuccessHandler(onSaveSuccess)
+            .withFailureHandler(onSaveFailure)
+            .saveData(formData);
+    });
+
+    function onSaveSuccess(response) {
+        showLoading(false);
+        try {
+            const result = JSON.parse(response);
+            if (result.status === 'success') {
+
+                // 🚀 Download PDF อัตโนมัติ
+                if (result.pdfBase64 && result.fileName) {
+                    try {
+                        const byteCharacters = atob(result.pdfBase64);
+                        const byteNumbers = new Array(byteCharacters.length);
+                        for (let i = 0; i < byteCharacters.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNumbers);
+                        const blob = new Blob([byteArray], { type: 'application/pdf' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = result.fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    } catch (pdfErr) {
+                        console.error('PDF download error:', pdfErr);
+                    }
+                }
+
+                Swal.fire({
+                    title: 'บันทึกข้อมูลเรียบร้อย!',
+                    text: 'ขอบคุณสำหรับการส่งรายงานการสื่อสาร ระบบได้รับข้อมูลที่บันทึกแล้วครับ/ค่ะ',
+                    icon: 'success', confirmButtonText: 'ตกลง'
+                });
+                resetForm();
+            } else {
+                onSaveFailure({ message: result.message || 'บันทึกไม่สำเร็จ' });
+            }
+        } catch (e) {
+            onSaveFailure({ message: "Apps Script ตอบกลับผิดพลาด" });
+        }
+    }
+
+    function onSaveFailure(error) {
+        showLoading(false);
+        Swal.fire({ title: 'เกิดข้อผิดพลาด!', text: error.message, icon: 'error', confirmButtonText: 'ตกลง' });
+    }
+
+    // ===================================================================
+    // === ฟังก์ชัน addCommunicationTopic (ปรับ evidence section ใหม่) ===
+    // ===================================================================
+
+    function addCommunicationTopic() {
+        if (communicationTopicsCount >= maxTopics) {
+            Swal.fire({ title: 'เต็มแล้ว', text: `เพิ่มได้สูงสุด ${maxTopics} ประเด็น`, icon: 'warning', confirmButtonText: 'ตกลง' });
+            return;
+        }
+        communicationTopicsCount++;
+        const n = communicationTopicsCount;
+        const container = document.getElementById('communication-topics-container');
+        const topicItem = document.createElement('div');
+        topicItem.className = 'communication-topic-item';
+        topicItem.id = `topic-item-${n}`;
+        topicItem.innerHTML = `
+            <div class="topic-header">
+                <div class="topic-number">ประเด็นที่ ${n}</div>
+                <button type="button" class="remove-topic-btn" onclick="removeCommunicationTopic(${n})" title="ลบประเด็นนี้">×</button>
+            </div>
+            <div class="form-group">
+                <label>เลือกประเด็นการสื่อสาร (เลือกได้หลายประเด็น) *</label>
+                <div class="topic-selection-grid">
+                    ${communicationTopicsData.map(topic => `
+                        <label class="checkbox-item">
+                            <input type="checkbox" name="topics-${n}" value="${topic}" onchange="updateTopicSelection(${n})">
+                            <span>${topic}</span>
+                        </label>`).join('')}
+                </div>
+            </div>
+            <div class="form-group">
+                <label>ประเด็นที่เลือก:</label>
+                <div id="selected-topics-${n}" class="selected-topics-display"><span class="no-selection">ยังไม่ได้เลือกประเด็น</span></div>
+            </div>
+            <div class="form-group">
+                <label for="communication-details-${n}">รายละเอียดที่ทำการสื่อสาร *</label>
+                <textarea id="communication-details-${n}" required></textarea>
+            </div>
+            <div class="form-group">
+                <label>เลือกประเภทการสื่อสาร *</label>
+                <div class="checkbox-list" style="gap:15px;">
+                    <label class="checkbox-item"><input type="checkbox" id="communication-type-internal-${n}" onchange="toggleCommunicationType('internal', ${n})"><span>การสื่อสารภายใน</span></label>
+                    <label class="checkbox-item"><input type="checkbox" id="communication-type-external-${n}" onchange="toggleCommunicationType('external', ${n})"><span>การสื่อสารภายนอก</span></label>
+                </div>
+            </div>
+            <div id="internal-channels-section-${n}" class="form-group hidden" style="margin-top:15px; padding-left:15px; border-left:3px solid #3498db;">
+                <label>ช่องทางการสื่อสารภายใน</label>
+                <div class="checkbox-list">
+                    <label class="checkbox-item"><input type="checkbox" name="internal-channels-${n}" value="การประชุม"><span>การประชุม</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="internal-channels-${n}" value="การตรวจเยี่ยม"><span>การตรวจเยี่ยม</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="internal-channels-${n}" value="การเป็นประธานในพิธีเปิดงาน/กิจกรรม"><span>การเป็นประธานในพิธีเปิดงาน/กิจกรรม</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="internal-channels-${n}" value="ช่องทาง Social Media ของหน่วยงาน"><span>ช่องทาง Social Media ของหน่วยงาน</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="internal-channels-${n}" value="Line Application"><span>Line Application</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="internal-channels-${n}" value="หนังสือเวียน หนังสือสั่งการ"><span>หนังสือเวียน หนังสือสั่งการ</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="internal-channels-${n}" value="การเป็นวิทยากร"><span>การเป็นวิทยากร</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="internal-channels-${n}" value="การจัดกิจกรรม/การเข้าร่วมกิจกรรม"><span>การจัดกิจกรรม/การเข้าร่วมกิจกรรม</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="internal-channels-${n}" value="E-mail กปน."><span>E-mail กปน.</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="internal-channels-${n}" value="อื่นๆ" onchange="toggleOtherInternal(this, ${n})"><span>อื่นๆ (โปรดระบุ)</span></label>
+                </div>
+                <div id="other-internal-input-${n}" class="form-group hidden" style="margin-top:10px;">
+                    <input type="text" id="other-internal-text-${n}" placeholder="โปรดระบุช่องทางอื่นๆ">
+                </div>
+            </div>
+            <div id="external-channels-section-${n}" class="form-group hidden" style="margin-top:15px; padding-left:15px; border-left:3px solid #e67e22;">
+                <label>ช่องทางการสื่อสารภายนอก</label>
+                <div class="checkbox-list">
+                    <label class="checkbox-item"><input type="checkbox" name="external-channels-${n}" value="การประชุมกับหน่วยงานภายนอก"><span>การประชุมกับหน่วยงานภายนอก</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="external-channels-${n}" value="การเข้าพบ"><span>การเข้าพบ</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="external-channels-${n}" value="การสัมมนา"><span>การสัมมนา</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="external-channels-${n}" value="การเป็นประธานในพิธีเปิด/กิจกรรมกับหน่วยงานภายนอก"><span>การเป็นประธานในพิธีเปิด/กิจกรรมกับหน่วยงานภายนอก</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="external-channels-${n}" value="ช่องทาง Social Media ของหน่วยงาน"><span>ช่องทาง Social Media ของหน่วยงาน</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="external-channels-${n}" value="Line Application ที่ใช้สำหรับติดต่อกับหน่วยงานภายนอก"><span>Line Application ที่ใช้สำหรับติดต่อกับหน่วยงานภายนอก</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="external-channels-${n}" value="การแถลงข่าว/การให้สัมภาษณ์"><span>การแถลงข่าว/การให้สัมภาษณ์</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="external-channels-${n}" value="การเป็นวิทยากร"><span>การเป็นวิทยากร</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="external-channels-${n}" value="การจัดกิจกรรม/การเข้าร่วมกิจกรรม"><span>การจัดกิจกรรม/การเข้าร่วมกิจกรรม</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="external-channels-${n}" value="การศึกษาดูงาน"><span>การศึกษาดูงาน</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="external-channels-${n}" value="หนังสือภายนอก"><span>หนังสือภายนอก</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="external-channels-${n}" value="E-mail ส่งถึงบุคคล/หน่วยงานภายนอก"><span>E-mail ส่งถึงบุคคล/หน่วยงานภายนอก</span></label>
+                    <label class="checkbox-item"><input type="checkbox" name="external-channels-${n}" value="อื่นๆ" onchange="toggleOtherExternal(this, ${n})"><span>อื่นๆ (โปรดระบุ)</span></label>
+                </div>
+                <div id="other-external-input-${n}" class="form-group hidden" style="margin-top:10px;">
+                    <input type="text" id="other-external-text-${n}" placeholder="โปรดระบุช่องทางอื่นๆ">
+                </div>
+            </div>
+            <div id="internal-audience-section-${n}" class="form-group hidden" style="margin-top:15px; padding-left:15px; border-left:3px solid #3498db;">
+                <label>กลุ่มผู้รับสารภายใน</label>
+                <div class="checkbox-list">
+                    <label class="checkbox-item"><input type="checkbox" name="internal-audience-${n}" value="บุคลากรภายใน กปน." onchange="toggleAudienceDetail('internal', 'staff', ${n})"><span>บุคลากรภายใน กปน.</span></label>
+                </div>
+                <div id="internal-staff-detail-${n}" class="form-group hidden" style="margin-top:10px;"><input type="text" placeholder="ระบุชื่อหน่วยงาน/ตำแหน่ง/กลุ่มบุคลากร"></div>
+            </div>
+            <div id="external-audience-section-${n}" class="form-group hidden" style="margin-top:15px; padding-left:15px; border-left:3px solid #e67e22;">
+                <label>กลุ่มผู้รับสารภายนอก</label>
+                <div class="checkbox-list">
+                    <label class="checkbox-item"><input type="checkbox" name="external-audience-${n}" value="หน่วยงานเชิงนโยบายฯ" onchange="toggleAudienceDetail('external', 'policy', ${n})"><span>หน่วยงานเชิงนโยบายและผู้ถือหุ้นภาครัฐ</span></label>
+                    <div id="external-policy-detail-${n}" class="form-group hidden" style="margin-left:20px; margin-top:5px;"><input type="text" placeholder="ระบุชื่อหน่วยงานฯ"></div>
+                    <label class="checkbox-item"><input type="checkbox" name="external-audience-${n}" value="หน่วยงานที่เกี่ยวข้องฯ" onchange="toggleAudienceDetail('external', 'mission', ${n})"><span>หน่วยงานที่เกี่ยวข้องในเชิงภารกิจ</span></label>
+                    <div id="external-mission-detail-${n}" class="form-group hidden" style="margin-left:20px; margin-top:5px;"><input type="text" placeholder="ระบุชื่อหน่วยงานฯ"></div>
+                    <label class="checkbox-item"><input type="checkbox" name="external-audience-${n}" value="พันธมิตร" onchange="toggleAudienceDetail('external', 'partner', ${n})"><span>พันธมิตร</span></label>
+                    <div id="external-partner-detail-${n}" class="form-group hidden" style="margin-left:20px; margin-top:5px;"><input type="text" placeholder="ระบุชื่อพันธมิตรฯ"></div>
+                    <label class="checkbox-item"><input type="checkbox" name="external-audience-${n}" value="คู่ค้า" onchange="toggleAudienceDetail('external', 'vendor', ${n})"><span>คู่ค้า</span></label>
+                    <div id="external-vendor-detail-${n}" class="form-group hidden" style="margin-left:20px; margin-top:5px;"><input type="text" placeholder="ระบุชื่อคู่ค้าฯ"></div>
+                    <label class="checkbox-item"><input type="checkbox" name="external-audience-${n}" value="ลูกค้า" onchange="toggleAudienceDetail('external', 'customer', ${n})"><span>ลูกค้า</span></label>
+                    <div id="external-customer-detail-${n}" class="form-group hidden" style="margin-left:20px; margin-top:5px;"><input type="text" placeholder="ระบุกลุ่มลูกค้าฯ"></div>
+                    <label class="checkbox-item"><input type="checkbox" name="external-audience-${n}" value="ชุมชนและสังคม" onchange="toggleAudienceDetail('external', 'community', ${n})"><span>ชุมชนและสังคม</span></label>
+                    <div id="external-community-detail-${n}" class="form-group hidden" style="margin-left:20px; margin-top:5px;"><input type="text" placeholder="ระบุชื่อชุมชนฯ"></div>
+                    <label class="checkbox-item"><input type="checkbox" name="external-audience-${n}" value="สื่อมวลชน" onchange="toggleAudienceDetail('external', 'media', ${n})"><span>สื่อมวลชน</span></label>
+                    <div id="external-media-detail-${n}" class="form-group hidden" style="margin-left:20px; margin-top:5px;"><input type="text" placeholder="ระบุชื่อสื่อฯ"></div>
+                </div>
+            </div>
+
+            <!-- 🚀 หลักฐาน: Google Drive Links (แทน file input) -->
+            <div class="form-group" style="margin-top:25px;">
+                <label>
+                    🔗 ลิงก์หลักฐาน Google Drive (ถ้ามี)
+                    <span id="link-count-${n}" class="link-count-badge">0/${MAX_LINKS_PER_TOPIC} ลิงก์</span>
+                </label>
+                <div id="evidence-links-${n}" class="evidence-links-container"></div>
+                <button type="button" class="btn-add-link" id="add-link-btn-${n}" onclick="addEvidenceLink(${n})">
+                    + เพิ่มลิงก์หลักฐาน
+                </button>
+                <small style="color:#888; margin-top:6px; display:block;">
+                    วาง Google Drive link ที่แชร์แล้ว เช่น https://drive.google.com/file/d/... (สูงสุด ${MAX_LINKS_PER_TOPIC} ลิงก์)
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label for="additional-details-${n}">รายละเอียดเพิ่มเติม</label>
+                <textarea id="additional-details-${n}" placeholder="กรุณากรอกรายละเอียดเพิ่มเติม (ถ้ามี)"></textarea>
+            </div>
+        `;
+        container.appendChild(topicItem);
+        topicItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // ===================================================================
+    // === ฟังก์ชัน renderTable (ปรับแสดง evidenceLinks) ===
+    // ===================================================================
+
+    function renderTable(data) {
+        const tbody = document.getElementById('communication-data-tbody');
+        const noDataMessage = document.getElementById('no-data-message');
+        const tableContainer = document.querySelector('.table-container');
+        const paginationContainer = document.querySelector('.pagination-container');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        if (currentFilteredData.length === 0) {
+            if (noDataMessage) noDataMessage.classList.remove('hidden');
+            if (tableContainer) tableContainer.style.display = 'none';
+            if (paginationContainer) paginationContainer.style.display = 'none';
+            return;
+        }
+        if (noDataMessage) noDataMessage.classList.add('hidden');
+        if (tableContainer) tableContainer.style.display = 'block';
+        if (paginationContainer) paginationContainer.style.display = 'flex';
+
+        data.forEach((record, index) => {
+            const row = tbody.insertRow();
+            row.style.borderBottom = '1px solid #e9ecef';
+            row.style.background = (index % 2 === 0) ? '#ffffff' : '#f8f9fa';
+
+            let topicsData = [];
+            try { topicsData = JSON.parse(record['communication_topics_json'] || '[]'); } catch (e) {}
+
+            const allSelectedTopics = topicsData.flatMap(t => t.selectedTopics || []).join(', ');
+            const allChannels = [...new Set([
+                ...topicsData.flatMap(t => t.internalChannels || []),
+                ...topicsData.flatMap(t => t.externalChannels || [])
+            ])];
+            const allInternalAudience = [...new Set(topicsData.flatMap(t => t.internalAudience || []))];
+            const allExternalAudience = [...new Set(topicsData.flatMap(t => t.externalAudience || []))];
+
+            const getCellHtml = (c) => `<td style="padding:12px 10px; border-right:1px solid #e9ecef;">${c}</td>`;
+            const getCenterCellHtml = (c) => `<td style="padding:12px 10px; text-align:center; border-right:1px solid #e9ecef;">${c}</td>`;
+            const trueIndex = (currentPage - 1) * rowsPerPage + index + 1;
+
+            // หลักฐาน: นับลิงก์
+            const allLinks = topicsData.flatMap(t => t.evidenceLinks || []).filter(l => l);
+            let fileHtml = allLinks.length > 0
+                ? `<span style="background:#e3f2fd; color:#1565c0; padding:4px 8px; border-radius:12px; font-size:12px; font-weight:500;">🔗 ${allLinks.length} ลิงก์</span>`
+                : `<span style="background:#f8d7da; color:#721c24; padding:4px 8px; border-radius:12px; font-size:11px;">ไม่มี</span>`;
+
+            let createdDate = record['created_date'] || '-';
+
+            row.innerHTML =
+                getCenterCellHtml(trueIndex) +
+                getCellHtml(record['communication_month'] || '-') +
+                getCellHtml(`<div style="font-weight:600;color:#2c3e50;">${record['executive_name']} ${record['executive_surname']}</div><div style="font-size:12px;color:#666;">${record['executive_position'] || '-'}</div><div style="font-size:12px;color:#666;">${record['executive_affiliation'] || '-'}</div>`) +
+                getCellHtml(`<div style="font-size:13px;line-height:1.4;">${allSelectedTopics || '-'}</div>`) +
+                getCellHtml(`<div style="font-size:12px;max-width:200px;max-height:100px;overflow-y:auto;">${allChannels.map(ch => `<span style="background:#e3f2fd;color:#1565c0;padding:2px 6px;border-radius:10px;margin:1px;display:inline-block;font-size:11px;">${ch}</span>`).join('') || '-'}</div>`) +
+                getCellHtml(`<div style="font-size:12px;">${allInternalAudience.length > 0 ? `<div><strong>ใน:</strong> ${allInternalAudience.join(', ')}</div>` : ''}${allExternalAudience.length > 0 ? `<div><strong>นอก:</strong> ${allExternalAudience.join(', ')}</div>` : ''}${allInternalAudience.length === 0 && allExternalAudience.length === 0 ? '-' : ''}</div>`) +
+                getCenterCellHtml(fileHtml) +
+                getCellHtml(`<div style="font-size:12px;font-weight:600;">${record['recorder_name']} ${record['recorder_surname']}</div><div style="font-size:11px;color:#666;">${record['recorder_department'] || record['recorder_affiliation'] || ''}</div>`) +
+                getCenterCellHtml(`<div style="font-size:12px;">${createdDate}</div>`) +
+                getCenterCellHtml(`<div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;">
+                    <button class="btn-action btn-view" onclick="viewRecord('${record['ID'] || record['id']}')" title="ดูข้อมูล">👁️</button>
+                    <button class="btn-action btn-edit" onclick="editRecord('${record['ID'] || record['id']}')" title="แก้ไขข้อมูล">✏️</button>
+                    <button class="btn-action btn-delete" onclick="deleteRecord('${record['ID'] || record['id']}')" title="ลบข้อมูล">🗑️</button>
+                </div>`);
+        });
+    }
+
+    // ===================================================================
+    // === viewRecord (ปรับแสดง evidenceLinks) ===
+    // ===================================================================
+
+    function viewRecord(recordId) {
+        const record = ALL_DATA.find(r => r['ID'] === recordId || r['id'] === recordId);
+        if (!record) { Swal.fire('ไม่พบข้อมูล', `ID: ${recordId}`, 'error'); return; }
+
+        let topicsData = [];
+        try { topicsData = JSON.parse(record['communication_topics_json'] || '[]'); } catch (e) {}
+
+        let topicsHtml = topicsData.map((topic, index) => {
+            const linksHtml = (topic.evidenceLinks && topic.evidenceLinks.length > 0)
+                ? topic.evidenceLinks.map((url, i) =>
+                    `<a href="${url}" target="_blank" style="display:block; font-size:13px; color:#2980b9; margin-bottom:4px;">🔗 ลิงก์ที่ ${i + 1}: ${url}</a>`
+                  ).join('')
+                : 'ไม่มี';
+
+            return `
+                <div style="margin-bottom:20px; padding:15px; border:1px solid #ddd; border-radius:8px;">
+                    <h5 style="margin:0 0 10px 0; color:#3498db;">📌 ประเด็นที่ ${index + 1}: ${(topic.selectedTopics || []).join(', ')}</h5>
+                    <p style="font-weight:600; margin:0 0 5px 0;">รายละเอียด:</p>
+                    <div style="background:#f1f1f1; padding:10px; border-radius:4px; font-size:14px; white-space:pre-wrap;">${topic.details || '-'}</div>
+                    <div style="margin-top:10px;"><strong>ช่องทาง:</strong> ${[...(topic.internalChannels || []), ...(topic.externalChannels || [])].join(', ') || '-'}</div>
+                    <div style="margin-top:10px;"><strong>ผู้รับสาร:</strong> ${[...(topic.internalAudience || []), ...(topic.externalAudience || [])].join(', ') || '-'}</div>
+                    <div style="margin-top:10px;"><strong>ลิงก์หลักฐาน:</strong><div style="margin-top:5px;">${linksHtml}</div></div>
+                </div>`;
+        }).join('');
+
+        // เตรียม print section
+        document.getElementById('print-month').innerText = record['communication_month'] || '-';
+        const tableBody = document.getElementById('print-table-body');
+        tableBody.innerHTML = '';
+        topicsData.forEach(topic => {
+            const linksPrintHtml = (topic.evidenceLinks && topic.evidenceLinks.length > 0)
+                ? topic.evidenceLinks.map((url, i) => `<a href="${url}" target="_blank" style="color:#000; text-decoration:underline; display:block; font-size:10pt;">🔗 ลิงก์ที่ ${i + 1}</a>`).join('')
+                : 'ไม่มี';
+            tableBody.innerHTML += `
+                <tr>
+                    <td>${record['executive_name']} ${record['executive_surname']}</td>
+                    <td><strong>${(topic.selectedTopics || []).join(', ')}</strong><hr style="margin:4px 0;"><p class="topic-detail-text">${topic.details || '-'}</p></td>
+                    <td>${[...(topic.internalChannels || []), ...(topic.externalChannels || [])].join(', ')}</td>
+                    <td>${[...(topic.internalAudience || []), ...(topic.externalAudience || [])].join(', ')}</td>
+                    <td>${linksPrintHtml}</td>
+                </tr>`;
+        });
+        populatePrintFooter(record);
+
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;';
+        modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+        modal.innerHTML = `
+            <div style="background:white;padding:0;border-radius:12px;max-width:900px;max-height:90%;overflow-y:auto;width:90%;" class="modal-content">
+                <div style="background:#34495e;color:white;padding:20px 30px;border-radius:12px 12px 0 0;position:sticky;top:0;z-index:10;">
+                    <button onclick="this.closest('div.modal-content').parentElement.remove()" style="float:right;background:none;border:none;font-size:28px;cursor:pointer;color:white;">&times;</button>
+                    <h2 style="margin:0 0 5px 0;">รายละเอียด (ID: ${record['ID'] || record['id']})</h2>
+                    <h3 style="margin:0;font-size:16px;font-weight:500;">เดือน ${record['communication_month'] || '-'}</h3>
+                    <div style="margin-top:15px;">
+                        <button type="button" class="btn btn-warning" onclick="window.print()" style="padding:8px 15px;font-size:14px;margin:0;">🖨️ พิมพ์</button>
+                        <button type="button" class="btn btn-primary" onclick="generatePdfFromHtml(event)" style="padding:8px 15px;font-size:14px;background:#c0392b;margin:0;">📄 ส่งออก PDF</button>
+                    </div>
+                </div>
+                <div style="padding:30px;">
+                    <div style="margin-bottom:20px;padding:20px;background:#f8f9fa;border-radius:8px;">
+                        <h4>📝 ข้อมูลผู้บันทึก</h4>
+                        <p><strong>ชื่อ-นามสกุล:</strong> ${record['recorder_name']} ${record['recorder_surname']}</p>
+                        <p><strong>ตำแหน่ง:</strong> ${record['recorder_position'] || '-'}</p>
+                        <p><strong>สายงาน/หน่วยงาน:</strong> ${record['recorder_affiliation'] || '-'} / ${record['recorder_department'] || '-'}</p>
+                        <p><strong>โทร:</strong> ${record['recorder_phone'] || '-'} | <strong>อีเมล:</strong> ${record['recorder_email'] || '-'}</p>
+                    </div>
+                    <div style="margin-bottom:20px;padding:20px;background:#f8f9fa;border-radius:8px;">
+                        <h4>👤 ข้อมูลผู้บริหาร</h4>
+                        <p><strong>ชื่อ-นามสกุล:</strong> ${record['executive_name']} ${record['executive_surname']}</p>
+                        <p><strong>ตำแหน่ง:</strong> ${record['executive_position'] || '-'}</p>
+                        <p><strong>สายงาน/หน่วยงาน:</strong> ${record['executive_affiliation'] || '-'} / ${record['executive_department'] || '-'}</p>
+                    </div>
+                    <div style="margin-bottom:20px;">
+                        <h4>💬 ประเด็นการสื่อสาร</h4>
+                        ${topicsHtml}
+                    </div>
+                    <h4 style="padding-top:15px;border-top:1px solid #eee;">⚠️ ปัญหาและอุปสรรค์</h4>
+                    <div style="white-space:pre-wrap;">${record['problems_obstacles'] || '-'}</div>
+                    <h4 style="padding-top:15px;border-top:1px solid #eee;">💡 ข้อเสนอแนะของผู้บริหาร</h4>
+                    <div style="white-space:pre-wrap;">${record['executive_suggestions'] || '-'}</div>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+    }
+
+    function populatePrintFooter(record) {
+        document.getElementById('print-recorder-name').innerText = `${record['recorder_name'] || ''} ${record['recorder_surname'] || ''}`;
+        document.getElementById('print-recorder-position').innerText = record['recorder_position'] || '...';
+        document.getElementById('print-recorder-affiliation').innerText = record['recorder_affiliation'] || '...';
+        document.getElementById('print-recorder-department').innerText = record['recorder_department'] || '...';
+        document.getElementById('print-recorder-phone').innerText = record['recorder_phone'] || '...';
+        document.getElementById('print-problems').innerText = record['problems_obstacles'] || '-';
+        document.getElementById('print-suggestions').innerText = record['executive_suggestions'] || '-';
+        document.getElementById('print-exec-name').innerText = `${record['executive_name'] || ''} ${record['executive_surname'] || ''}`;
+        document.getElementById('print-exec-position').innerText = record['executive_position'] || '...';
+    }
+
+    // ===================================================================
+    // === ฟังก์ชันที่เหลือ (เหมือนเดิม) ===
+    // ===================================================================
+
+    function fetchAndRenderData() {
+        showLoading(true);
+        google.script.run
+            .withSuccessHandler(onDataFetchSuccess)
+            .withFailureHandler(onDataFetchFailure)
+            .getSheetData();
+    }
+
+    function onDataFetchSuccess(response) {
+        showLoading(false);
+        try {
+            const result = JSON.parse(response);
+            if (result.status === 'success') {
+                ALL_DATA = result.data.map(row => {
+                    const record = {};
+                    result.headers.forEach((header, index) => { record[header] = row[index]; });
+                    return record;
+                });
+                currentFilteredData = ALL_DATA;
+                currentPage = 1;
+                displayPaginatedData();
+                if (document.getElementById('dashboard-tab')) updateDashboard(ALL_DATA);
+            } else {
+                Swal.fire('เกิดข้อผิดพลาด', result.message, 'error');
+            }
+        } catch (e) {
+            showLoading(false);
+            Swal.fire('เกิดข้อผิดพลาด', 'ประมวลผลข้อมูลไม่ได้ (JSON Error)', 'error');
+        }
+    }
+
+    function onDataFetchFailure(error) {
+        showLoading(false);
+        Swal.fire('เกิดข้อผิดพลาด', `ดึงข้อมูลไม่ได้: ${error.message}`, 'error');
+        currentFilteredData = [];
+        displayPaginatedData();
+    }
+
+    function resetForm() {
+        document.getElementById('communication-form').reset();
+        currentStep = 1;
+        communicationTopicsCount = 0;
+        document.getElementById('communication-topics-container').innerHTML = '';
+        document.querySelectorAll('.step').forEach(s => s.classList.remove('active', 'completed'));
+        document.getElementById('step1').classList.add('active');
+        document.querySelectorAll('.form-step').forEach(s => s.classList.add('hidden'));
+        document.getElementById('form-step-1').classList.remove('hidden');
+    }
+
+    function showTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.getElementById(tabName + '-tab').classList.add('active');
+        event.target.classList.add('active');
+        if (tabName === 'data' || tabName === 'dashboard') fetchAndRenderData();
+    }
+
+    function nextStep(step) {
+        if (!validateCurrentStep()) return;
+        document.getElementById(`form-step-${currentStep}`).classList.add('hidden');
+        document.getElementById(`step${currentStep}`).classList.remove('active');
+        document.getElementById(`step${currentStep}`).classList.add('completed');
+        currentStep = step;
+        document.getElementById(`form-step-${currentStep}`).classList.remove('hidden');
+        document.getElementById(`step${currentStep}`).classList.add('active');
+    }
+
+    function prevStep(step) {
+        document.getElementById(`form-step-${currentStep}`).classList.add('hidden');
+        document.getElementById(`step${currentStep}`).classList.remove('active');
+        currentStep = step;
+        document.getElementById(`form-step-${currentStep}`).classList.remove('hidden');
+        document.getElementById(`step${currentStep}`).classList.add('active');
+        document.getElementById(`step${currentStep}`).classList.remove('completed');
+    }
+
+    function validateCurrentStep() {
+        const errors = [];
+        if (currentStep === 1) {
+            if (!document.getElementById('recorder-name').value.trim()) errors.push('ชื่อผู้บันทึก');
+            if (!document.getElementById('recorder-surname').value.trim()) errors.push('นามสกุลผู้บันทึก');
+            if (!document.getElementById('recorder-position').value.trim()) errors.push('ตำแหน่งผู้บันทึก');
+            if (!document.getElementById('recorder-affiliation').value) errors.push('สายงานผู้บันทึก');
+            if (!document.getElementById('recorder-department').value) errors.push('หน่วยงานผู้บันทึก');
+            if (!document.getElementById('recorder-phone').value.trim()) errors.push('เบอร์โทร');
+            const email = document.getElementById('recorder-email').value.trim();
+            if (!email) errors.push('อีเมล');
+            else if (!isValidEmail(email)) {
+                Swal.fire({ title: 'ข้อมูลไม่ถูกต้อง', text: 'รูปแบบอีเมลไม่ถูกต้อง', icon: 'warning', confirmButtonText: 'ตกลง' });
+                return false;
+            }
+        } else if (currentStep === 2) {
+            if (!document.getElementById('communication-month').value) errors.push('เดือนที่สื่อสาร');
+            if (!document.getElementById('executive-name').value.trim()) errors.push('ชื่อผู้บริหาร');
+            if (!document.getElementById('executive-surname').value.trim()) errors.push('นามสกุลผู้บริหาร');
+            if (!document.getElementById('executive-position').value.trim()) errors.push('ตำแหน่งผู้บริหาร');
+            if (!document.getElementById('executive-affiliation').value) errors.push('สายงานผู้บริหาร');
+            if (!document.getElementById('executive-department').value) errors.push('หน่วยงานผู้บริหาร');
+        } else if (currentStep === 3) {
+            if (communicationTopicsCount === 0) {
+                Swal.fire({ title: 'ข้อมูลไม่ครบ', text: 'กรุณาเพิ่มประเด็นการสื่อสารอย่างน้อย 1 ประเด็น', icon: 'warning', confirmButtonText: 'ตกลง' });
+                return false;
+            }
+            for (let i = 1; i <= communicationTopicsCount; i++) {
+                const item = document.getElementById(`topic-item-${i}`);
+                if (!item) continue;
+                if (!item.querySelector(`input[name="topics-${i}"]:checked`)) errors.push(`ประเด็นที่ ${i}: ต้องเลือกประเด็น`);
+                if (!document.getElementById(`communication-details-${i}`).value.trim()) errors.push(`ประเด็นที่ ${i}: ต้องใส่รายละเอียด`);
+                const isInternal = document.getElementById(`communication-type-internal-${i}`).checked;
+                const isExternal = document.getElementById(`communication-type-external-${i}`).checked;
+                if (!isInternal && !isExternal) errors.push(`ประเด็นที่ ${i}: ต้องเลือกประเภทการสื่อสาร`);
+                if (isInternal && !item.querySelectorAll(`input[name="internal-channels-${i}"]:checked`).length) errors.push(`ประเด็นที่ ${i}: ต้องเลือกช่องทางภายใน`);
+                if (isExternal && !item.querySelectorAll(`input[name="external-channels-${i}"]:checked`).length) errors.push(`ประเด็นที่ ${i}: ต้องเลือกช่องทางภายนอก`);
+                if (isInternal && !item.querySelectorAll(`input[name="internal-audience-${i}"]:checked`).length) errors.push(`ประเด็นที่ ${i}: ต้องเลือกผู้รับสารภายใน`);
+                if (isExternal && !item.querySelectorAll(`input[name="external-audience-${i}"]:checked`).length) errors.push(`ประเด็นที่ ${i}: ต้องเลือกผู้รับสารภายนอก`);
+            }
+        }
+        if (errors.length > 0) {
+            Swal.fire({
+                title: 'ข้อมูลยังไม่ครบถ้วน',
+                html: `กรุณากรอก/เลือกข้อมูลที่จำเป็น:<br><ul style="text-align:left;margin-left:20px;margin-top:10px;">${errors.map(e => `<li>${e}</li>`).join('')}</ul>`,
+                icon: 'warning', confirmButtonText: 'ตกลง'
+            });
+            return false;
+        }
+        return true;
+    }
+
+    function isValidEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+
+    function validateFinalSubmission() {
+        for (let i = 1; i <= 4; i++) {
+            currentStep = i;
+            if (!validateCurrentStep()) {
+                document.querySelectorAll('.form-step').forEach(s => s.classList.add('hidden'));
+                document.getElementById(`form-step-${i}`).classList.remove('hidden');
+                document.querySelectorAll('.step').forEach(s => s.classList.remove('active', 'completed'));
+                document.getElementById(`step${i}`).classList.add('active');
+                return false;
+            }
+            document.getElementById(`step${i}`).classList.add('completed');
+        }
+        return true;
+    }
+
+    function showLoading(show) {
+        const loading = document.getElementById('loading');
+        if (loading) { show ? loading.classList.add('show') : loading.classList.remove('show'); }
+    }
+
+    function updateDepartments(affiliationId, departmentId) {
+        const affiliationSelect = document.getElementById(affiliationId);
+        const departmentSelect = document.getElementById(departmentId);
+        const selected = affiliationSelect.value;
+        departmentSelect.innerHTML = '';
+        if (selected && departmentData[selected]) {
+            departmentSelect.appendChild(new Option('เลือกหน่วยงาน', ''));
+            departmentData[selected].forEach(d => departmentSelect.appendChild(new Option(d, d)));
+            departmentSelect.disabled = false;
+        } else {
+            departmentSelect.appendChild(new Option('เลือกสายงานก่อน', ''));
+            departmentSelect.disabled = true;
+        }
+    }
+
+    function updateSearchDepartments() {
+        const aff = document.getElementById('search-affiliation').value;
+        const dep = document.getElementById('search-department');
+        dep.innerHTML = '<option value="">ทุกหน่วยงาน</option>';
+        if (aff && departmentData[aff]) {
+            departmentData[aff].forEach(d => dep.appendChild(new Option(d, d)));
+            dep.disabled = false;
+        } else {
+            dep.disabled = true;
+        }
+    }
+
+    function removeCommunicationTopic(topicId) {
+        document.getElementById(`topic-item-${topicId}`).remove();
+        updateTopicNumbers();
+    }
+
+    function updateTopicNumbers() {
+        const items = document.querySelectorAll('.communication-topic-item');
+        communicationTopicsCount = 0;
+        items.forEach((item) => {
+            communicationTopicsCount++;
+            const newId = communicationTopicsCount;
+            const oldId = parseInt(item.id.split('-')[2]);
+            if (oldId === newId) return;
+            item.id = `topic-item-${newId}`;
+            item.querySelector('.topic-number').textContent = `ประเด็นที่ ${newId}`;
+            item.querySelector('.remove-topic-btn').setAttribute('onclick', `removeCommunicationTopic(${newId})`);
+            item.querySelectorAll(`[id*="-${oldId}"]`).forEach(el => el.id = el.id.replace(`-${oldId}`, `-${newId}`));
+            item.querySelectorAll(`[for*="-${oldId}"]`).forEach(el => el.setAttribute('for', el.getAttribute('for').replace(`-${oldId}`, `-${newId}`)));
+            item.querySelectorAll(`[name*="-${oldId}"]`).forEach(el => el.name = el.name.replace(`-${oldId}`, `-${newId}`));
+            item.querySelectorAll(`[onchange*="(${oldId})"]`).forEach(el => el.setAttribute('onchange', el.getAttribute('onchange').replace(`(${oldId})`, `(${newId})`)));
+            item.querySelectorAll(`[onchange*=",${oldId})"]`).forEach(el => el.setAttribute('onchange', el.getAttribute('onchange').replace(`,${oldId})`, `,${newId})`)));
+            item.querySelectorAll(`[onclick*="(${oldId})"]`).forEach(el => el.setAttribute('onclick', el.getAttribute('onclick').replace(`(${oldId})`, `(${newId})`)));
+        });
+    }
+
+    function updateTopicSelection(topicId) {
+        const checkboxes = document.querySelectorAll(`input[name="topics-${topicId}"]:checked`);
+        const container = document.getElementById(`selected-topics-${topicId}`);
+        container.innerHTML = checkboxes.length === 0
+            ? '<span class="no-selection">ยังไม่ได้เลือกประเด็น</span>'
+            : Array.from(checkboxes).map(cb => `<span class="topic-tag">${cb.value}</span>`).join('');
+    }
+
+    function toggleCommunicationType(type, topicId) {
+        const checked = document.getElementById(`communication-type-${type}-${topicId}`).checked;
+        document.getElementById(`${type}-channels-section-${topicId}`).classList.toggle('hidden', !checked);
+        document.getElementById(`${type}-audience-section-${topicId}`).classList.toggle('hidden', !checked);
+        if (!checked) {
+            document.getElementById(`other-${type}-input-${topicId}`).classList.add('hidden');
+            const otherCb = document.querySelector(`input[name="${type}-channels-${topicId}"][value="อื่นๆ"]`);
+            if (otherCb) otherCb.checked = false;
+        }
+    }
+
+    function toggleOtherInternal(checkbox, topicId) {
+        document.getElementById(`other-internal-input-${topicId}`).classList.toggle('hidden', !checkbox.checked);
+    }
+
+    function toggleOtherExternal(checkbox, topicId) {
+        document.getElementById(`other-external-input-${topicId}`).classList.toggle('hidden', !checkbox.checked);
+    }
+
+    function toggleAudienceDetail(type, category, topicId) {
+        document.getElementById(`${type}-${category}-detail-${topicId}`).classList.toggle('hidden', !event.target.checked);
+    }
+
+    function displayPaginatedData() {
+        if (!document.getElementById('communication-data-tbody')) return;
+        const total = currentFilteredData.length;
+        const totalPages = Math.ceil(total / rowsPerPage);
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = Math.min(startIndex + rowsPerPage, total);
+        renderTable(currentFilteredData.slice(startIndex, endIndex));
+        document.getElementById('total-records').textContent = total;
+        document.getElementById('showing-start').textContent = total > 0 ? startIndex + 1 : 0;
+        document.getElementById('showing-end').textContent = total > 0 ? endIndex : 0;
+        renderPaginationButtons(totalPages);
+    }
+
+    function renderPaginationButtons(totalPages) {
+        const container = document.querySelector('.pagination-buttons');
+        container.innerHTML = '';
+        const prev = document.createElement('button');
+        prev.className = 'btn-pagination'; prev.innerHTML = 'ก่อนหน้า';
+        prev.onclick = () => changePage('prev'); prev.disabled = currentPage === 1;
+        container.appendChild(prev);
+        let start = Math.max(1, currentPage - 2), end = Math.min(totalPages, currentPage + 2);
+        if (currentPage <= 3) end = Math.min(5, totalPages);
+        if (currentPage > totalPages - 2) start = Math.max(1, totalPages - 4);
+        if (start > 1) { container.appendChild(createPageButton(1)); if (start > 2) container.appendChild(createPageDots()); }
+        for (let i = start; i <= end; i++) container.appendChild(createPageButton(i));
+        if (end < totalPages) { if (end < totalPages - 1) container.appendChild(createPageDots()); container.appendChild(createPageButton(totalPages)); }
+        const next = document.createElement('button');
+        next.className = 'btn-pagination'; next.innerHTML = 'ถัดไป';
+        next.onclick = () => changePage('next'); next.disabled = currentPage === totalPages || totalPages === 0;
+        container.appendChild(next);
+    }
+
+    function createPageButton(page) {
+        const b = document.createElement('button');
+        b.className = 'btn-pagination'; b.textContent = page;
+        b.onclick = () => changePage(page);
+        if (page === currentPage) { b.classList.add('active'); b.disabled = true; }
+        return b;
+    }
+
+    function createPageDots() {
+        const d = document.createElement('span');
+        d.textContent = '...'; d.style.padding = '8px 5px'; d.style.color = '#666';
+        return d;
+    }
+
+    function changePage(page) {
+        const totalPages = Math.ceil(currentFilteredData.length / rowsPerPage);
+        if (page === 'prev' && currentPage > 1) currentPage--;
+        else if (page === 'next' && currentPage < totalPages) currentPage++;
+        else if (typeof page === 'number') currentPage = page;
+        displayPaginatedData();
+    }
+
+    function filterData() {
+        const month = document.getElementById('search-month').value;
+        const aff = document.getElementById('search-affiliation').value;
+        const dep = document.getElementById('search-department').value;
+        const text = document.getElementById('search-text').value.toLowerCase();
+        currentFilteredData = ALL_DATA.filter(r => {
+            const s = (r['executive_name'] + r['executive_surname'] + r['communication_topics_json']).toLowerCase();
+            return (!month || r['communication_month'] === month) &&
+                   (!aff || r['executive_affiliation'] === aff) &&
+                   (!dep || r['executive_department'] === dep) &&
+                   (!text || s.includes(text));
+        });
+        currentPage = 1;
+        displayPaginatedData();
+    }
+
+    function resetFilters() {
+        document.getElementById('search-month').value = '';
+        document.getElementById('search-affiliation').value = '';
+        document.getElementById('search-department').value = '';
+        document.getElementById('search-department').disabled = true;
+        document.getElementById('search-text').value = '';
+        currentFilteredData = ALL_DATA; currentPage = 1;
+        displayPaginatedData();
+    }
+
+    function filterDashboardData() {
+        const month = document.getElementById('dashboard-month-filter').value;
+        const aff = document.getElementById('dashboard-affiliation-filter').value;
+        let filtered = ALL_DATA;
+        if (month) filtered = filtered.filter(r => r['communication_month'] === month);
+        if (aff) filtered = filtered.filter(r => r['executive_affiliation'] === aff);
+        updateDashboard(filtered);
+    }
+
+    function resetDashboardFilters() {
+        document.getElementById('dashboard-month-filter').value = '';
+        document.getElementById('dashboard-affiliation-filter').value = '';
+        updateDashboard(ALL_DATA);
+    }
+
+    function generatePdfFromHtml(event) {
+        const button = event.target;
+        button.disabled = true; button.textContent = '⏳ กำลังสร้าง...';
+        const recordId = document.querySelector('.modal-content h2').textContent.match(/\(ID: (.*?)\)/)[1];
+        const month = document.querySelector('.modal-content h3').textContent.replace('เดือน ', '').trim();
+        const fileName = `[PDF Report] ${recordId} - ${month}`;
+        google.script.run
+            .withSuccessHandler((response) => {
+                const result = JSON.parse(response);
+                if (result.status === 'success' && result.url) {
+                    window.open(result.url, '_blank');
+                    Swal.fire('สร้าง PDF สำเร็จ!', 'ไฟล์ PDF ถูกเปิดในแท็บใหม่', 'success');
+                } else {
+                    Swal.fire('ไม่สำเร็จ', result.message, 'error');
+                }
+                button.disabled = false; button.textContent = '📄 ส่งออก PDF';
+            })
+            .withFailureHandler((error) => {
+                Swal.fire('เกิดข้อผิดพลาด', error.message, 'error');
+                button.disabled = false; button.textContent = '📄 ส่งออก PDF';
+            })
+            .generatePdfForRecordId(recordId, fileName);
+    }
+
+    function deleteRecord(recordId) {
+        Swal.fire({
+            title: 'ยืนยันการลบ', text: `แน่ใจหรือไม่? (ID: ${recordId})`,
+            icon: 'warning', showCancelButton: true,
+            confirmButtonColor: '#dc3545', cancelButtonColor: '#6c757d',
+            confirmButtonText: 'ใช่, ลบเลย!', cancelButtonText: 'ยกเลิก'
+        }).then(result => {
+            if (result.isConfirmed) {
+                showLoading(true);
+                google.script.run
+                    .withSuccessHandler(res => {
+                        showLoading(false);
+                        const r = JSON.parse(res);
+                        if (r.status === 'success') {
+                            Swal.fire('ลบเรียบร้อย!', `ID: ${r.id} ถูกลบแล้ว`, 'success');
+                            fetchAndRenderData();
+                        } else {
+                            Swal.fire('ผิดพลาด', r.message, 'error');
+                        }
+                    })
+                    .withFailureHandler(err => { showLoading(false); Swal.fire('ผิดพลาด', err.message, 'error'); })
+                    .deleteData(recordId);
+            }
+        });
+    }
+
+    function editRecord(recordId) {
+        Swal.fire({ title: 'แจ้งให้ทราบ', text: 'ฟีเจอร์ "แก้ไขข้อมูล" ยังไม่เปิดใช้งาน', icon: 'info', confirmButtonText: 'ตกลง' });
+    }
+
+    // ===================================================================
+    // === Dashboard Charts ===
+    // ===================================================================
+
+    let departmentChart, topicsChart, channelsChart, audienceChart;
+
+    function updateDashboard(allData) {
+        if (!document.getElementById('departmentChart')) return;
+        const allUnits = Object.values(departmentData).flat();
+        const totalUnits = allUnits.length;
+        const submittedAll = new Set(ALL_DATA.map(r => r['executive_department']));
+        const totalSubmitted = allUnits.filter(u => submittedAll.has(u)).length;
+        document.getElementById('total-reports').textContent = ALL_DATA.length;
+        document.getElementById('completed-departments').textContent = totalSubmitted;
+        document.getElementById('pending-departments').textContent = totalUnits - totalSubmitted;
+        document.getElementById('completion-rate').textContent = totalUnits > 0 ? `${Math.round(totalSubmitted / totalUnits * 100)}%` : '0%';
+
+        const submittedFiltered = new Set(allData.map(r => r['executive_department']));
+        const affFilter = document.getElementById('dashboard-affiliation-filter').value;
+        const deptLabels = Object.keys(departmentData);
+
+        if (departmentChart) {
+            departmentChart.data.labels = deptLabels.map(a => a.replace('สายงาน', ''));
+            departmentChart.data.datasets[0].data = deptLabels.map(aff => (departmentData[aff] || []).filter(u => submittedFiltered.has(u)).length);
+            departmentChart.data.datasets[1].data = deptLabels.map((aff, i) => {
+                if (affFilter && aff !== affFilter) return 0;
+                return (departmentData[aff] || []).length - departmentChart.data.datasets[0].data[i];
+            });
+            departmentChart.update();
+        }
+
+        const topicsCount = {};
+        allData.forEach(r => { try { JSON.parse(r['communication_topics_json'] || '[]').forEach(item => { (item.selectedTopics || []).forEach(t => { topicsCount[t] = (topicsCount[t] || 0) + 1; }); }); } catch (e) {} });
+        const sortedTopics = Object.entries(topicsCount).sort(([,a],[,b]) => b - a).slice(0, 6);
+        if (topicsChart) { topicsChart.data.labels = sortedTopics.map(e => e[0]); topicsChart.data.datasets[0].data = sortedTopics.map(e => e[1]); topicsChart.update(); }
+
+        const ch = { 'ภายใน': 0, 'ภายนอก': 0 };
+        allData.forEach(r => { try { JSON.parse(r['communication_topics_json'] || '[]').forEach(item => { if ((item.internalChannels || []).length) ch['ภายใน']++; if ((item.externalChannels || []).length) ch['ภายนอก']++; }); } catch (e) {} });
+        if (channelsChart) { channelsChart.data.datasets[0].data = [ch['ภายใน'], ch['ภายนอก']]; channelsChart.update(); }
+
+        const au = { 'ภายใน': 0, 'ภายนอก': 0 };
+        allData.forEach(r => { try { JSON.parse(r['communication_topics_json'] || '[]').forEach(item => { if ((item.internalAudience || []).length) au['ภายใน']++; if ((item.externalAudience || []).length) au['ภายนอก']++; }); } catch (e) {} });
+        if (audienceChart) { audienceChart.data.datasets[0].data = [au['ภายใน'], au['ภายนอก']]; audienceChart.update(); }
+
+        let statusHtml = '';
+        for (const affName in departmentData) {
+            if (affFilter && affFilter !== affName) continue;
+            const units = departmentData[affName] || [];
+            let submittedCount = 0, unitsHtml = '';
+            units.forEach(unit => {
+                if (submittedFiltered.has(unit)) {
+                    unitsHtml += `<div class="dept-item"><span class="status status-submitted">✅</span><span class="dept-name">${unit}</span></div>`;
+                    submittedCount++;
+                } else {
+                    unitsHtml += `<div class="dept-item"><span class="status status-pending">⏳</span><span class="dept-name dept-name-pending">${unit} (ยังไม่ส่ง)</span></div>`;
+                }
+            });
+            statusHtml += `<div class="aff-group"><div class="aff-header">${affName} (ส่ง ${submittedCount} / ${units.length})</div>${unitsHtml}</div>`;
+        }
+        document.getElementById('department-status-list').innerHTML = statusHtml;
+    }
+
+    function initializeDepartmentChart() {
+        const ctx = document.getElementById('departmentChart').getContext('2d');
+        if (departmentChart) departmentChart.destroy();
+        departmentChart = new Chart(ctx, { type: 'bar', data: { labels: [], datasets: [{ label: 'ส่งแล้ว', data: [], backgroundColor: '#27ae60' }, { label: 'ยังไม่ส่ง', data: [], backgroundColor: '#f39c12' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } } } } });
+    }
+    function initializeTopicsChart() {
+        const ctx = document.getElementById('topicsChart').getContext('2d');
+        if (topicsChart) topicsChart.destroy();
+        topicsChart = new Chart(ctx, { type: 'doughnut', data: { labels: [], datasets: [{ data: [], backgroundColor: ['#3498db','#e74c3c','#9b59b6','#f1c40f','#2ecc71','#1abc9c'] }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } } });
+    }
+    function initializeChannelsChart() {
+        const ctx = document.getElementById('channelsChart').getContext('2d');
+        if (channelsChart) channelsChart.destroy();
+        channelsChart = new Chart(ctx, { type: 'pie', data: { labels: ['สื่อสารภายใน','สื่อสารภายนอก'], datasets: [{ data: [0,0], backgroundColor: ['#3498db','#9b59b6'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+    }
+    function initializeAudienceChart() {
+        const ctx = document.getElementById('audienceChart').getContext('2d');
+        if (audienceChart) audienceChart.destroy();
+        audienceChart = new Chart(ctx, { type: 'pie', data: { labels: ['ผู้รับสารภายใน','ผู้รับสารภายนอก'], datasets: [{ data: [0,0], backgroundColor: ['#27ae60','#f39c12'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+    }
+
+    document.addEventListener('DOMContentLoaded', async function() {
+        showLoading(true);
+        try {
+            departmentData = await new Promise((resolve, reject) => {
+                google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).getDepartmentData();
+            });
+            const affiliations = Object.keys(departmentData);
+            ['recorder-affiliation','executive-affiliation','search-affiliation','dashboard-affiliation-filter'].forEach(id => {
+                const sel = document.getElementById(id);
+                if (sel) affiliations.forEach(aff => sel.appendChild(new Option(aff, aff)));
+            });
+            initializeDepartmentChart();
+            initializeTopicsChart();
+            initializeChannelsChart();
+            initializeAudienceChart();
+            fetchAndRenderData();
+        } catch (error) {
+            showLoading(false);
+            Swal.fire({ title: 'เกิดข้อผิดพลาดร้ายแรง!', text: 'โหลดข้อมูลสายงานไม่ได้ กรุณาตรวจสอบชีต "Config"\n\nError: ' + error.message, icon: 'error', confirmButtonText: 'ตกลง' });
+        }
+    });
+</script>
+</body>
+</html>

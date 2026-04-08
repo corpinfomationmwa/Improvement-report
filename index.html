@@ -10,28 +10,42 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
     <style>
-        /* CSS ของคุณ (ย่อมาเพื่อความกระชับ) */
-        body { font-family: 'Sarabun', sans-serif; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        /* คัดลอก CSS เดิมของคุณมาทั้งหมดเพื่อให้หน้าตาเหมือนเดิม */
+        body { font-family: 'Sarabun', Arial, sans-serif; margin: 0; padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
         .container { max-width: 1200px; margin: 20px auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; }
-        .header { background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; padding: 20px; text-align: center; }
+        .header { background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; padding: 20px 30px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; }
         .tabs { display: flex; background: #f8f9fa; border-bottom: 2px solid #e9ecef; }
-        .tab { flex: 1; padding: 15px; border: none; cursor: pointer; font-size: 16px; transition: 0.3s; }
-        .tab.active { background: white; border-bottom: 3px solid #3498db; }
+        .tab { flex: 1; padding: 15px 20px; background: #f8f9fa; border: none; cursor: pointer; font-size: 16px; font-weight: 500; color: #495057; transition: all 0.3s ease; border-bottom: 3px solid transparent; }
+        .tab.active { background: white; color: #2c3e50; border-bottom-color: #3498db; }
         .tab-content { display: none; padding: 30px; }
         .tab-content.active { display: block; }
-        .form-section { background: #fff; padding: 25px; margin-bottom: 25px; border-radius: 12px; border: 1px solid #e9ecef; }
-        .hidden { display: none; }
-        .loading { display: none; text-align: center; padding: 20px; }
-        .loading.show { display: block; }
-        .btn { padding: 10px 20px; border-radius: 8px; cursor: pointer; border: none; margin: 5px; font-weight: bold; }
+        
+        /* สไตล์ของ Form และ Steps */
+        .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; position: relative; }
+        .step { flex: 1; text-align: center; padding: 10px; background: #ffffff; border-radius: 8px; font-weight: 600; color: #6c757d; border: 2px solid #e9ecef; z-index: 2; margin: 0 5px; }
+        .step.active { border-color: #3498db; color: #3498db; }
+        .step.completed { border-color: #27ae60; color: #27ae60; }
+        
+        .form-section { background: #ffffff; padding: 25px; margin-bottom: 25px; border-radius: 12px; border: 1px solid #e9ecef; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .form-group { display: flex; flex-direction: column; text-align: left; }
+        .form-group label { font-weight: 500; margin-bottom: 8px; color: #2c3e50; }
+        .form-group input, .form-group select, .form-group textarea { padding: 12px 16px; border: 1px solid #dee2e6; border-radius: 8px; font-size: 14px; background: #f8f9fa; }
+        
+        .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.3s ease; margin: 5px; }
         .btn-primary { background: #3498db; color: white; }
-        /* ... เพิ่ม CSS อื่นๆ ตามที่คุณมีได้เลย ... */
+        .btn-warning { background: #f39c12; color: white; }
+        .btn-success { background: #27ae60; color: white; }
+        .hidden { display: none; }
+        .loading { display: none; text-align: center; padding: 20px; font-weight: bold; color: white; }
+        .loading.show { display: block; }
     </style>
 </head>
 <body>
     <div class="container">
         <header class="header">
-            <h1>ระบบรายงานแผนการสื่อสารภายในและภายนอกองค์กรของผู้บริหาร</h1>
+            <h1>ระบบรายงานแผนการสื่อสารภายในและภายนอกองค์กรของผู้บริหาร ปีงบประมาณ 2569</h1>
         </header>
         
         <nav class="tabs">
@@ -41,80 +55,137 @@
         </nav>
 
         <div id="form-tab" class="tab-content active">
-            <div id="loading" class="loading">⏳ กำลังประมวลผล...</div>
+            <div class="step-indicator">
+                <div class="step active" id="step1">1. ข้อมูลผู้บันทึก</div>
+                <div class="step" id="step2">2. ข้อมูลผู้บริหาร</div>
+                <div class="step" id="step3">3. รายละเอียดการสื่อสาร</div>
+                <div class="step" id="step4">4. ปัญหาและข้อเสนอแนะ</div>
+            </div>
+            
             <form id="communication-form">
-                <div class="form-section">
-                    <h3>1. ข้อมูลผู้บันทึก</h3>
-                    <input type="text" id="recorder-name" placeholder="ชื่อ" required>
-                    <input type="text" id="recorder-surname" placeholder="นามสกุล" required>
+                <div id="form-step-1" class="form-step">
+                    <div class="form-section">
+                        <h3>1. ข้อมูลผู้บันทึก</h3>
+                        <div class="form-row">
+                            <div class="form-group"><label>ชื่อผู้บันทึกข้อมูล *</label><input type="text" id="recorder-name" required></div>
+                            <div class="form-group"><label>นามสกุลผู้บันทึกข้อมูล *</label><input type="text" id="recorder-surname" required></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>ตำแหน่งผู้บันทึกข้อมูล *</label><input type="text" id="recorder-position" required></div>
+                            <div class="form-group"><label>สายงาน *</label><select id="recorder-affiliation" onchange="updateDepts('recorder')" required><option value="">เลือกสายงาน</option></select></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>หน่วยงาน *</label><select id="recorder-department" disabled required><option value="">เลือกสายงานก่อน</option></select></div>
+                            <div class="form-group"><label>เบอร์โทรศัพท์ *</label><input type="tel" id="recorder-phone" required></div>
+                        </div>
+                        <div class="form-group"><label>อีเมล *</label><input type="email" id="recorder-email" required></div>
                     </div>
-                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
-            </form>
-        </div>
+                    <div style="text-align: center;"><button type="button" class="btn btn-primary" onclick="nextStep(2)">ถัดไป</button></div>
+                </div>
 
-        <div id="data-tab" class="tab-content">
-            <h3>รายการข้อมูลล่าสุด</h3>
-            <div id="data-table-container"></div>
+                <div id="form-step-2" class="form-step hidden">
+                    <div class="form-section">
+                        <h3>2. ข้อมูลผู้บริหาร</h3>
+                        <div class="form-group"><label>เดือนที่ทำการสื่อสาร *</label>
+                            <select id="communication-month" required>
+                                <option value="">เลือกเดือน</option>
+                                <option value="เมษายน 2569">เมษายน 2569</option>
+                                </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>ชื่อผู้บริหาร *</label><input type="text" id="executive-name" required></div>
+                            <div class="form-group"><label>นามสกุลผู้บริหาร *</label><input type="text" id="executive-surname" required></div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group"><label>ตำแหน่งผู้บริหาร *</label><input type="text" id="executive-position" required></div>
+                            <div class="form-group"><label>สายงาน *</label><select id="executive-affiliation" onchange="updateDepts('executive')" required><option value="">เลือกสายงาน</option></select></div>
+                        </div>
+                        <div class="form-group"><label>หน่วยงาน *</label><select id="executive-department" disabled required><option value="">เลือกสายงานก่อน</option></select></div>
+                    </div>
+                    <div style="text-align: center;">
+                        <button type="button" class="btn btn-warning" onclick="prevStep(1)">ย้อนกลับ</button>
+                        <button type="button" class="btn btn-primary" onclick="nextStep(3)">ถัดไป</button>
+                    </div>
+                </div>
+
+                <div id="form-step-3" class="form-step hidden">
+                     <div class="form-section"><h3>3. รายละเอียดการสื่อสาร</h3><p>ส่วนนี้ให้คุณเพิ่ม Input ประเด็นเดิมของคุณได้เลยครับ</p></div>
+                     <div style="text-align: center;"><button type="button" class="btn btn-warning" onclick="prevStep(2)">ย้อนกลับ</button><button type="button" class="btn btn-primary" onclick="nextStep(4)">ถัดไป</button></div>
+                </div>
+
+                <div id="form-step-4" class="form-step hidden">
+                    <div class="form-section">
+                        <h3>4. ปัญหาและข้อเสนอแนะ</h3>
+                        <div class="form-group"><label>ปัญหาและอุปสรรค</label><textarea id="problems-obstacles"></textarea></div>
+                        <div class="form-group"><label>ข้อเสนอแนะ</label><textarea id="executive-suggestions"></textarea></div>
+                    </div>
+                    <div style="text-align: center;"><button type="button" class="btn btn-warning" onclick="prevStep(3)">ย้อนกลับ</button><button type="submit" class="btn btn-success">บันทึกข้อมูล</button></div>
+                </div>
+            </form>
+            <div id="loading" class="loading">⏳ กำลังประมวลผล...</div>
         </div>
     </div>
 
     <script>
-        // 🔗 URL ของ Google Apps Script ของคุณ
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzttpFhHFVRRI7uvzo3pzW81Zs-3NAPP0A2gMEZFZdyoN2m0Z-fkeriQBkxvAP_V6QK9Q/exec";
+        let currentStep = 1;
+        let departmentData = {};
 
-        // ฟังก์ชันส่งข้อมูลไปยัง GAS (แทน google.script.run)
         async function callGAS(data, method = 'POST') {
-            const options = {
-                method: method,
-                mode: 'cors'
-            };
             const url = (method === 'GET') ? `${GAS_URL}?${new URLSearchParams(data)}` : GAS_URL;
+            const options = { method: method, mode: 'cors' };
             if (method === 'POST') options.body = JSON.stringify(data);
-
-            const response = await fetch(url, options);
-            return await response.json();
+            const res = await fetch(url, options);
+            return await res.json();
         }
 
-        // จัดการ Tabs
-        function showTab(tabName) {
+        // โหลดข้อมูลสายงาน
+        document.addEventListener('DOMContentLoaded', async () => {
+            document.getElementById('loading').classList.add('show');
+            try {
+                departmentData = await callGAS({ action: 'getDepartmentData' }, 'GET');
+                const affs = Object.keys(departmentData);
+                ['recorder-affiliation', 'executive-affiliation'].forEach(id => {
+                    const el = document.getElementById(id);
+                    affs.forEach(a => el.appendChild(new Option(a, a)));
+                });
+            } catch (e) { console.error(e); }
+            document.getElementById('loading').classList.remove('show');
+        });
+
+        function updateDepts(type) {
+            const aff = document.getElementById(`${type}-affiliation`).value;
+            const deptSelect = document.getElementById(`${type}-department`);
+            deptSelect.innerHTML = '<option value="">เลือกหน่วยงาน</option>';
+            if (aff && departmentData[aff]) {
+                departmentData[aff].forEach(d => deptSelect.appendChild(new Option(d, d)));
+                deptSelect.disabled = false;
+            } else { deptSelect.disabled = true; }
+        }
+
+        function nextStep(step) {
+            document.getElementById(`form-step-${currentStep}`).classList.add('hidden');
+            document.getElementById(`step${currentStep}`).classList.remove('active');
+            document.getElementById(`step${currentStep}`).classList.add('completed');
+            currentStep = step;
+            document.getElementById(`form-step-${currentStep}`).classList.remove('hidden');
+            document.getElementById(`step${currentStep}`).classList.add('active');
+        }
+
+        function prevStep(step) {
+            document.getElementById(`form-step-${currentStep}`).classList.add('hidden');
+            document.getElementById(`step${currentStep}`).classList.remove('active');
+            currentStep = step;
+            document.getElementById(`form-step-${currentStep}`).classList.remove('hidden');
+            document.getElementById(`step${currentStep}`).classList.add('active');
+            document.getElementById(`step${currentStep}`).classList.remove('completed');
+        }
+
+        function showTab(tab) {
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.getElementById(tabName + '-tab').classList.add('active');
-            if(tabName === 'data') fetchData();
-        }
-
-        // โหลดข้อมูลเมื่อเปิดหน้าเว็บ
-        document.addEventListener('DOMContentLoaded', async () => {
-            showLoading(true);
-            try {
-                const result = await callGAS({ action: 'getDepartmentData' }, 'GET');
-                console.log("Connected!", result);
-                // จัดการ Dropdown ต่างๆ ตรงนี้
-            } catch (e) {
-                console.error(e);
-            } finally {
-                showLoading(false);
-            }
-        });
-
-        // ฟังก์ชันบันทึก
-        document.getElementById('communication-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            showLoading(true);
-            try {
-                // รวบรวม formData ของคุณ
-                const formData = { id: Date.now(), recorder_name: document.getElementById('recorder-name').value }; 
-                const result = await callGAS({ action: 'saveData', formData: formData }, 'POST');
-                if(result.status === 'success') Swal.fire('สำเร็จ', 'บันทึกเรียบร้อย', 'success');
-            } catch (err) {
-                Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
-            } finally {
-                showLoading(false);
-            }
-        });
-
-        function showLoading(show) {
-            document.getElementById('loading').classList.toggle('show', show);
+            document.getElementById(tab + '-tab').classList.add('active');
+            event.target.classList.add('active');
         }
     </script>
 </body>

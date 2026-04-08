@@ -1,85 +1,121 @@
-<script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbzttpFhHFVRRI7uvzo3pzW81Zs-3NAPP0A2gMEZFZdyoN2m0Z-fkeriQBkxvAP_V6QK9Q/exec";
+<!doctype html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบรายงานแผนการสื่อสารผู้บริหาร</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
 
-    // ฟังก์ชันหลักในการติดต่อกับ Google (เปลี่ยนจาก google.script.run)
-    async function callGAS(data, method = 'POST') {
-        const url = (method === 'GET') ? `${GAS_URL}?${new URLSearchParams(data)}` : GAS_URL;
-        const options = {
-            method: method,
-            mode: 'cors'
-        };
-        if (method === 'POST') options.body = JSON.stringify(data);
+    <style>
+        /* CSS ของคุณ (ย่อมาเพื่อความกระชับ) */
+        body { font-family: 'Sarabun', sans-serif; margin: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 1200px; margin: 20px auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; padding: 20px; text-align: center; }
+        .tabs { display: flex; background: #f8f9fa; border-bottom: 2px solid #e9ecef; }
+        .tab { flex: 1; padding: 15px; border: none; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        .tab.active { background: white; border-bottom: 3px solid #3498db; }
+        .tab-content { display: none; padding: 30px; }
+        .tab-content.active { display: block; }
+        .form-section { background: #fff; padding: 25px; margin-bottom: 25px; border-radius: 12px; border: 1px solid #e9ecef; }
+        .hidden { display: none; }
+        .loading { display: none; text-align: center; padding: 20px; }
+        .loading.show { display: block; }
+        .btn { padding: 10px 20px; border-radius: 8px; cursor: pointer; border: none; margin: 5px; font-weight: bold; }
+        .btn-primary { background: #3498db; color: white; }
+        /* ... เพิ่ม CSS อื่นๆ ตามที่คุณมีได้เลย ... */
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>ระบบรายงานแผนการสื่อสารภายในและภายนอกองค์กรของผู้บริหาร</h1>
+        </header>
+        
+        <nav class="tabs">
+            <button class="tab active" onclick="showTab('form')">บันทึกข้อมูล</button>
+            <button class="tab" onclick="showTab('data')">ข้อมูลการสื่อสาร</button>
+            <button class="tab" onclick="showTab('dashboard')">Dashboard</button>
+        </nav>
 
-        const response = await fetch(url, options);
-        return await response.json();
-    }
+        <div id="form-tab" class="tab-content active">
+            <div id="loading" class="loading">⏳ กำลังประมวลผล...</div>
+            <form id="communication-form">
+                <div class="form-section">
+                    <h3>1. ข้อมูลผู้บันทึก</h3>
+                    <input type="text" id="recorder-name" placeholder="ชื่อ" required>
+                    <input type="text" id="recorder-surname" placeholder="นามสกุล" required>
+                    </div>
+                <button type="submit" class="btn btn-primary">บันทึกข้อมูล</button>
+            </form>
+        </div>
 
-    // --- ส่วนการโหลดข้อมูล Config เมื่อเปิดหน้าเว็บ ---
-    document.addEventListener('DOMContentLoaded', async function() {
-        showLoading(true);
-        try {
-            departmentData = await callGAS({ action: 'getDepartmentData' }, 'GET');
-            const affiliations = Object.keys(departmentData);
-            
-            // Populate Dropdowns
-            ['recorder-affiliation', 'executive-affiliation', 'search-affiliation', 'dashboard-affiliation-filter'].forEach(id => {
-                const select = document.getElementById(id);
-                if (select) affiliations.forEach(aff => select.appendChild(new Option(aff, aff)));
-            });
+        <div id="data-tab" class="tab-content">
+            <h3>รายการข้อมูลล่าสุด</h3>
+            <div id="data-table-container"></div>
+        </div>
+    </div>
 
-            initializeDepartmentChart();
-            initializeTopicsChart();
-            initializeChannelsChart();
-            initializeAudienceChart();
-            fetchAndRenderData();
-        } catch (error) {
-            Swal.fire('Error', 'เชื่อมต่อข้อมูลไม่สำเร็จ: ' + error.message, 'error');
-        } finally {
-            showLoading(false);
+    <script>
+        // 🔗 URL ของ Google Apps Script ของคุณ
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzttpFhHFVRRI7uvzo3pzW81Zs-3NAPP0A2gMEZFZdyoN2m0Z-fkeriQBkxvAP_V6QK9Q/exec";
+
+        // ฟังก์ชันส่งข้อมูลไปยัง GAS (แทน google.script.run)
+        async function callGAS(data, method = 'POST') {
+            const options = {
+                method: method,
+                mode: 'cors'
+            };
+            const url = (method === 'GET') ? `${GAS_URL}?${new URLSearchParams(data)}` : GAS_URL;
+            if (method === 'POST') options.body = JSON.stringify(data);
+
+            const response = await fetch(url, options);
+            return await response.json();
         }
-    });
 
-    // --- ส่วนการบันทึกข้อมูล ---
-    document.getElementById('communication-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
-        try {
-            if (!validateFinalSubmission()) return;
+        // จัดการ Tabs
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabName + '-tab').classList.add('active');
+            if(tabName === 'data') fetchData();
+        }
+
+        // โหลดข้อมูลเมื่อเปิดหน้าเว็บ
+        document.addEventListener('DOMContentLoaded', async () => {
             showLoading(true);
-
-            // 1. อัปโหลดไฟล์
-            const fileUrls = await uploadEvidenceFiles(); // ฟังก์ชันนี้ให้เปลี่ยนไปใช้ callGAS ข้างในด้วย
-
-            // 2. ส่งข้อมูลบันทึก
-            const formData = collectFormData(fileUrls);
-            const result = await callGAS({ action: 'saveData', formData: formData }, 'POST');
-            
-            if (result.status === 'success') {
-                Swal.fire('สำเร็จ!', 'บันทึกข้อมูลและส่งอีเมลยืนยันเรียบร้อยแล้ว', 'success');
-                resetForm();
-            } else {
-                throw new Error(result.message);
+            try {
+                const result = await callGAS({ action: 'getDepartmentData' }, 'GET');
+                console.log("Connected!", result);
+                // จัดการ Dropdown ต่างๆ ตรงนี้
+            } catch (e) {
+                console.error(e);
+            } finally {
+                showLoading(false);
             }
-        } catch (error) {
-            Swal.fire('เกิดข้อผิดพลาด', error.message, 'error');
-        } finally {
-            showLoading(false);
+        });
+
+        // ฟังก์ชันบันทึก
+        document.getElementById('communication-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading(true);
+            try {
+                // รวบรวม formData ของคุณ
+                const formData = { id: Date.now(), recorder_name: document.getElementById('recorder-name').value }; 
+                const result = await callGAS({ action: 'saveData', formData: formData }, 'POST');
+                if(result.status === 'success') Swal.fire('สำเร็จ', 'บันทึกเรียบร้อย', 'success');
+            } catch (err) {
+                Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('show', show);
         }
-    });
-
-    // --- ฟังก์ชันดึงข้อมูลตาราง ---
-    async function fetchAndRenderData() {
-        try {
-            const result = await callGAS({ action: 'getSheetData' }, 'GET');
-            if (result.status === 'success') {
-                ALL_DATA = result.data.map(row => {
-                    const record = {};
-                    result.headers.forEach((header, index) => { record[header] = row[index]; });
-                    return record;
-                });
-                currentFilteredData = ALL_DATA;
-                displayPaginatedData();
-                updateDashboard(ALL_DATA);
-            }
-        } catch (e) { console.error(e); }
-    }
-</script>
+    </script>
+</body>
+</html>

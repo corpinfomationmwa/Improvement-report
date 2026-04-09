@@ -62,7 +62,7 @@
         .tag { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 11px; margin: 2px; color: white; }
         
         .pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #eee; }
-        .page-btn { padding: 8px 15px; margin: 0 3px; border: 1px solid #ddd; background: white; cursor: pointer; border-radius: 5px; font-family: 'Sarabun'; }
+        .page-btn { padding: 8px 15px; margin: 0 3px; border: 1px solid #ddd; background: white; color: #495057; border-radius: 5px; cursor: pointer; font-family: 'Sarabun'; }
         .page-btn.active { background: #3498db; color: white; border-color: #3498db; }
         
         .btn-action { padding: 6px 10px; border: none; border-radius: 4px; cursor: pointer; margin-right: 3px; color: white; font-size: 12px; font-family: 'Sarabun'; }
@@ -120,7 +120,7 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group"><label>สายงานของผู้บันทึกข้อมูล *</label>
-                                <select id="recorder-affiliation" onchange="updateDepartments('recorder-affiliation', 'recorder-department')" required><option value="">เลือกสายงาน</option></select>
+                                <select id="recorder-affiliation" onchange="updateDepts('recorder')" required><option value="">เลือกสายงาน</option></select>
                             </div>
                             <div class="form-group"><label>หน่วยงานของผู้บันทึกข้อมูล *</label>
                                 <select id="recorder-department" disabled required><option value="">เลือกสายงานก่อน</option></select>
@@ -146,7 +146,7 @@
                         <div class="form-group"><label>ตำแหน่งผู้บริหาร *</label><input type="text" id="executive-position" required></div>
                         <div class="form-row">
                             <div class="form-group"><label>สายงานของผู้บริหาร *</label>
-                                <select id="executive-affiliation" onchange="updateDepartments('executive-affiliation', 'executive-department')" required><option value="">เลือกสายงาน</option></select>
+                                <select id="executive-affiliation" onchange="updateDepts('executive')" required><option value="">เลือกสายงาน</option></select>
                             </div>
                             <div class="form-group"><label>หน่วยงานของผู้บริหาร *</label>
                                 <select id="executive-department" disabled required><option value="">เลือกสายงานก่อน</option></select>
@@ -175,7 +175,7 @@
                     </div>
                     <div style="text-align: center;">
                         <button type="button" class="btn btn-warning" onclick="prevStep(3)">ย้อนกลับ</button>
-                        <button type="button" class="btn btn-success" onclick="submitDataToServer()">บันทึกข้อมูล</button>
+                        <button type="button" class="btn btn-success" onclick="submitDataToServer()">บันทึกข้อมูลและส่งรายงาน</button>
                     </div>
                 </div>
             </form>
@@ -264,7 +264,7 @@
     </div>
 
     <script>
-        // 🔗 วางลิงก์ Google Apps Script URL ของคุณที่นี่
+        // 🔗 วางลิงก์ Google Apps Script URL ของคุณ 🔗
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzttpFhHFVRRI7uvzo3pzW81Zs-3NAPP0A2gMEZFZdyoN2m0Z-fkeriQBkxvAP_V6QK9Q/exec";
         
         let departmentData = {};
@@ -289,51 +289,52 @@
 
         async function callGAS(data, method = 'POST') {
             const url = (method === 'GET') ? `${GAS_URL}?${new URLSearchParams(data)}` : GAS_URL;
-            const res = await fetch(url, { method: method, body: method === 'POST' ? JSON.stringify(data) : null });
-            if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-            return await res.json();
+            try {
+                const res = await fetch(url, { method: method, body: method === 'POST' ? JSON.stringify(data) : null });
+                if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+                return await res.json();
+            } catch (err) {
+                console.error("Fetch Error:", err);
+                throw err;
+            }
         }
 
         window.onload = async () => {
-            Swal.fire({ title: 'กำลังโหลดระบบ...', text: 'กรุณารอสักครู่', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            Swal.fire({ title: 'กำลังเชื่อมต่อฐานข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             try {
-                // โหลดเดือน
                 months.forEach(m => {
                     document.getElementById('communication-month').appendChild(new Option(m, m));
                     document.getElementById('f-month').appendChild(new Option(m, m));
                     document.getElementById('dash-month').appendChild(new Option(m, m));
                 });
                 
-                // โหลดสายงานจาก GAS
-                departmentData = await callGAS({ action: 'getDepartmentData' }, 'GET');
+                const resDept = await callGAS({ action: 'getDepartmentData' }, 'GET');
+                if(resDept.error) throw new Error(resDept.error);
+                departmentData = resDept;
+
                 const affs = Object.keys(departmentData);
                 ['recorder-affiliation', 'executive-affiliation', 'f-aff', 'dash-aff'].forEach(id => {
                     affs.forEach(a => document.getElementById(id).appendChild(new Option(a, a)));
                 });
 
-                // โหลดข้อมูลตาราง
-                const res = await callGAS({ action: 'getSheetData' }, 'GET');
-                if (res.status === 'success') {
-                    ALL_RECORDS = res.data;
+                const resData = await callGAS({ action: 'getSheetData' }, 'GET');
+                if (resData.status === 'success') {
+                    ALL_RECORDS = resData.data;
                     FILTERED_RECORDS = ALL_RECORDS;
                     renderTable();
                     updateDashboard();
                 } else {
-                    throw new Error(res.message);
+                    throw new Error(resData.message);
                 }
                 
-                addTopic(); // สร้างประเด็นที่ 1 รอไว้เลย
+                addTopic(); 
                 Swal.close();
             } catch (e) { 
-                Swal.fire({
-                    title: 'เชื่อมต่อฐานข้อมูลไม่สำเร็จ!', 
-                    html: `<b>โปรดแก้ไข:</b><br>1. ไปที่ Google Apps Script ของคุณ<br>2. กด Deploy -> New Deployment<br>3. ช่อง Who has access <b>ต้องเลือก Everyone (ทุกคน)</b> เท่านั้น<br><br><small>Error: ${e.message}</small>`, 
-                    icon: 'error'
-                }); 
+                Swal.fire({ title: 'เชื่อมต่อฐานข้อมูลไม่สำเร็จ!', text: e.message, icon: 'error' }); 
             }
         };
 
-        // ================= ระบบประเด็นการสื่อสาร (ครบถ้วนตามต้นฉบับ) =================
+        // ================= ฟอร์มประเด็นการสื่อสาร =================
         function addTopic() {
             if (communicationTopicsCount >= 30) {
                 return Swal.fire({ title: 'เต็มแล้ว', text: `เพิ่มได้สูงสุด 30 ประเด็น`, icon: 'warning' });
@@ -356,13 +357,13 @@
                         </div>
                     </div>
                     
-                    <div class="form-group"><label>รายละเอียดที่ทำการสื่อสาร *</label><textarea id="communication-details-${id}" rows="3" required></textarea></div>
+                    <div class="form-group"><label>รายละเอียดที่ทำการสื่อสาร *</label><textarea id="communication-details-${id}" rows="3"></textarea></div>
                     
                     <div class="form-group">
                         <label>เลือกประเภทการสื่อสาร (เลือกได้ทั้งสองตัวเลือก) *</label>
-                        <div class="checkbox-list" style="flex-direction:row; gap:20px; display:flex;">
-                            <label class="checkbox-item" style="color:#2980b9; font-weight:bold;"><input type="checkbox" id="type-internal-${id}" onchange="toggleType('internal', ${id})"> การสื่อสารภายใน</label>
-                            <label class="checkbox-item" style="color:#d35400; font-weight:bold;"><input type="checkbox" id="type-external-${id}" onchange="toggleType('external', ${id})"> การสื่อสารภายนอก</label>
+                        <div style="display:flex; gap:20px; margin-bottom:10px;">
+                            <label style="cursor:pointer; color:#2980b9; font-weight:bold;"><input type="checkbox" class="in-check" onchange="toggleSub('internal', ${id})"> การสื่อสารภายใน</label>
+                            <label style="cursor:pointer; color:#d35400; font-weight:bold;"><input type="checkbox" class="out-check" onchange="toggleSub('external', ${id})"> การสื่อสารภายนอก</label>
                         </div>
                         
                         <div id="section-internal-${id}" class="form-group hidden" style="margin-top:15px; padding:15px; border-left:4px solid #3498db; background:#f0f7ff;">
@@ -370,12 +371,12 @@
                             <div class="checkbox-grid" style="background:transparent; border:none; padding:0;">
                                 <label class="checkbox-item"><input type="checkbox" name="c-in-${id}" value="การประชุม"> <span>การประชุม</span></label>
                                 <label class="checkbox-item"><input type="checkbox" name="c-in-${id}" value="การตรวจเยี่ยม"> <span>การตรวจเยี่ยม</span></label>
-                                <label class="checkbox-item"><input type="checkbox" name="c-in-${id}" value="การเป็นประธานในพิธีเปิดงาน/กิจกรรม"> <span>การเป็นประธานในพิธีเปิดงาน/กิจกรรม</span></label>
-                                <label class="checkbox-item"><input type="checkbox" name="c-in-${id}" value="ช่องทาง Social Media ของหน่วยงาน"> <span>ช่องทาง Social Media ของหน่วยงาน</span></label>
+                                <label class="checkbox-item"><input type="checkbox" name="c-in-${id}" value="ประธานในพิธี/กิจกรรม"> <span>การเป็นประธานในพิธีเปิดงาน/กิจกรรม</span></label>
+                                <label class="checkbox-item"><input type="checkbox" name="c-in-${id}" value="Social Media หน่วยงาน"> <span>ช่องทาง Social Media ของหน่วยงาน</span></label>
                                 <label class="checkbox-item"><input type="checkbox" name="c-in-${id}" value="Line Application"> <span>Line Application</span></label>
                                 <label class="checkbox-item"><input type="checkbox" name="c-in-${id}" value="หนังสือเวียน หนังสือสั่งการ"> <span>หนังสือเวียน หนังสือสั่งการ</span></label>
                                 <label class="checkbox-item"><input type="checkbox" name="c-in-${id}" value="การเป็นวิทยากร"> <span>การเป็นวิทยากร</span></label>
-                                <label class="checkbox-item"><input type="checkbox" name="c-in-${id}" value="การจัดกิจกรรม/การเข้าร่วมกิจกรรม"> <span>การจัดกิจกรรม/การเข้าร่วมกิจกรรม</span></label>
+                                <label class="checkbox-item"><input type="checkbox" name="c-in-${id}" value="จัด/ร่วมกิจกรรม"> <span>การจัดกิจกรรม/การเข้าร่วมกิจกรรม</span></label>
                                 <label class="checkbox-item"><input type="checkbox" name="c-in-${id}" value="E-mail กปน."> <span>E-mail กปน.</span></label>
                                 <label class="checkbox-item"><input type="checkbox" name="c-in-${id}" value="อื่นๆ" onchange="toggleOtherInternal(this, ${id})"> <span>อื่นๆ (โปรดระบุ)</span></label>
                             </div>
@@ -391,52 +392,31 @@
                         <div id="section-external-${id}" class="form-group hidden" style="margin-top:15px; padding:15px; border-left:4px solid #e67e22; background:#fff5eb;">
                             <label style="color:#d35400;">ช่องทางการสื่อสารภายนอก</label>
                             <div class="checkbox-grid" style="background:transparent; border:none; padding:0;">
-                                <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="การประชุมกับหน่วยงานภายนอก"> <span>การประชุมกับหน่วยงานภายนอก</span></label>
+                                <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="การประชุมภายนอก"> <span>การประชุมกับหน่วยงานภายนอก</span></label>
                                 <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="การเข้าพบ"> <span>การเข้าพบ</span></label>
                                 <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="การสัมมนา"> <span>การสัมมนา</span></label>
-                                <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="การเป็นประธานในพิธีเปิด/กิจกรรมกับหน่วยงานภายนอก"> <span>การเป็นประธานในพิธีเปิด/กิจกรรมกับหน่วยงานภายนอก</span></label>
-                                <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="ช่องทาง Social Media ของหน่วยงาน"> <span>ช่องทาง Social Media ของหน่วยงาน</span></label>
-                                <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="Line Application ที่ใช้ติดต่อกับหน่วยงานภายนอก"> <span>Line Application ที่ใช้สำหรับติดต่อกับหน่วยงานภายนอก</span></label>
-                                <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="การแถลงข่าว/การให้สัมภาษณ์"> <span>การแถลงข่าว/การให้สัมภาษณ์</span></label>
+                                <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="ประธานในพิธี/กิจกรรม (นอก)"> <span>การเป็นประธานในพิธีเปิด/กิจกรรมกับหน่วยงานภายนอก</span></label>
+                                <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="Social Media"> <span>ช่องทาง Social Media ของหน่วยงาน</span></label>
+                                <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="Line Application"> <span>Line Application ติดต่อภายนอก</span></label>
+                                <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="การแถลงข่าว/สัมภาษณ์"> <span>การแถลงข่าว/การให้สัมภาษณ์</span></label>
                                 <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="การเป็นวิทยากร"> <span>การเป็นวิทยากร</span></label>
-                                <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="การจัดกิจกรรม/การเข้าร่วมกิจกรรม"> <span>การจัดกิจกรรม/การเข้าร่วมกิจกรรม</span></label>
+                                <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="จัด/ร่วมกิจกรรม"> <span>การจัดกิจกรรม/การเข้าร่วมกิจกรรม</span></label>
                                 <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="การศึกษาดูงาน"> <span>การศึกษาดูงาน</span></label>
                                 <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="หนังสือภายนอก"> <span>หนังสือภายนอก</span></label>
-                                <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="E-mail ส่งถึงบุคคล/หน่วยงานภายนอก"> <span>E-mail ส่งถึงบุคคล/หน่วยงานภายนอก</span></label>
+                                <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="E-mail ภายนอก"> <span>E-mail ส่งถึงหน่วยงานภายนอก</span></label>
                                 <label class="checkbox-item"><input type="checkbox" name="c-out-${id}" value="อื่นๆ" onchange="toggleOtherExternal(this, ${id})"> <span>อื่นๆ (โปรดระบุ)</span></label>
                             </div>
                             <div id="other-external-input-${id}" class="form-group hidden" style="margin-top: 10px;"><input type="text" id="other-external-text-${id}" placeholder="ระบุช่องทางอื่นๆ"></div>
 
                             <label style="color:#d35400; margin-top:15px;">กลุ่มผู้รับสารภายนอก</label>
                             <div class="checkbox-grid" style="background:transparent; padding:0; border:none;">
-                                <div style="display:flex; flex-direction:column; gap:5px;">
-                                    <label class="checkbox-item"><input type="checkbox" name="a-out-${id}" value="หน่วยงานเชิงนโยบายฯ" onchange="toggleAudienceDetail('external', 'policy', ${id})"> <span>หน่วยงานเชิงนโยบายและผู้ถือหุ้นภาครัฐ</span></label>
-                                    <div id="detail-external-policy-${id}" class="form-group hidden" style="margin-left: 20px;"><input type="text" id="detail-external-policy-val-${id}" placeholder="ระบุชื่อหน่วยงาน"></div>
-                                </div>
-                                <div style="display:flex; flex-direction:column; gap:5px;">
-                                    <label class="checkbox-item"><input type="checkbox" name="a-out-${id}" value="หน่วยงานที่เกี่ยวข้องฯ" onchange="toggleAudienceDetail('external', 'mission', ${id})"> <span>หน่วยงานที่เกี่ยวข้องในเชิงภารกิจ</span></label>
-                                    <div id="detail-external-mission-${id}" class="form-group hidden" style="margin-left: 20px;"><input type="text" id="detail-external-mission-val-${id}" placeholder="ระบุชื่อหน่วยงาน"></div>
-                                </div>
-                                <div style="display:flex; flex-direction:column; gap:5px;">
-                                    <label class="checkbox-item"><input type="checkbox" name="a-out-${id}" value="พันธมิตร" onchange="toggleAudienceDetail('external', 'partner', ${id})"> <span>พันธมิตร</span></label>
-                                    <div id="detail-external-partner-${id}" class="form-group hidden" style="margin-left: 20px;"><input type="text" id="detail-external-partner-val-${id}" placeholder="ระบุชื่อพันธมิตร"></div>
-                                </div>
-                                <div style="display:flex; flex-direction:column; gap:5px;">
-                                    <label class="checkbox-item"><input type="checkbox" name="a-out-${id}" value="คู่ค้า" onchange="toggleAudienceDetail('external', 'vendor', ${id})"> <span>คู่ค้า</span></label>
-                                    <div id="detail-external-vendor-${id}" class="form-group hidden" style="margin-left: 20px;"><input type="text" id="detail-external-vendor-val-${id}" placeholder="ระบุชื่อคู่ค้า"></div>
-                                </div>
-                                <div style="display:flex; flex-direction:column; gap:5px;">
-                                    <label class="checkbox-item"><input type="checkbox" name="a-out-${id}" value="ลูกค้า" onchange="toggleAudienceDetail('external', 'customer', ${id})"> <span>ลูกค้า</span></label>
-                                    <div id="detail-external-customer-${id}" class="form-group hidden" style="margin-left: 20px;"><input type="text" id="detail-external-customer-val-${id}" placeholder="ระบุกลุ่มลูกค้า"></div>
-                                </div>
-                                <div style="display:flex; flex-direction:column; gap:5px;">
-                                    <label class="checkbox-item"><input type="checkbox" name="a-out-${id}" value="ชุมชนและสังคม" onchange="toggleAudienceDetail('external', 'community', ${id})"> <span>ชุมชนและสังคม</span></label>
-                                    <div id="detail-external-community-${id}" class="form-group hidden" style="margin-left: 20px;"><input type="text" id="detail-external-community-val-${id}" placeholder="ระบุชื่อชุมชน"></div>
-                                </div>
-                                <div style="display:flex; flex-direction:column; gap:5px;">
-                                    <label class="checkbox-item"><input type="checkbox" name="a-out-${id}" value="สื่อมวลชน" onchange="toggleAudienceDetail('external', 'media', ${id})"> <span>สื่อมวลชน</span></label>
-                                    <div id="detail-external-media-${id}" class="form-group hidden" style="margin-left: 20px;"><input type="text" id="detail-external-media-val-${id}" placeholder="ระบุชื่อสื่อ"></div>
-                                </div>
+                                <div><label class="checkbox-item"><input type="checkbox" name="a-out-${id}" value="หน่วยงานเชิงนโยบายฯ" onchange="toggleAudienceDetail('external', 'policy', ${id})"> <span>หน่วยงานเชิงนโยบายและผู้ถือหุ้นภาครัฐ</span></label><div id="detail-external-policy-${id}" class="form-group hidden" style="margin:5px 0 10px 25px;"><input type="text" id="detail-external-policy-val-${id}" placeholder="ระบุชื่อหน่วยงาน"></div></div>
+                                <div><label class="checkbox-item"><input type="checkbox" name="a-out-${id}" value="หน่วยงานภารกิจ" onchange="toggleAudienceDetail('external', 'mission', ${id})"> <span>หน่วยงานที่เกี่ยวข้องในเชิงภารกิจ</span></label><div id="detail-external-mission-${id}" class="form-group hidden" style="margin:5px 0 10px 25px;"><input type="text" id="detail-external-mission-val-${id}" placeholder="ระบุชื่อหน่วยงาน"></div></div>
+                                <div><label class="checkbox-item"><input type="checkbox" name="a-out-${id}" value="พันธมิตร" onchange="toggleAudienceDetail('external', 'partner', ${id})"> <span>พันธมิตร</span></label><div id="detail-external-partner-${id}" class="form-group hidden" style="margin:5px 0 10px 25px;"><input type="text" id="detail-external-partner-val-${id}" placeholder="ระบุชื่อพันธมิตร"></div></div>
+                                <div><label class="checkbox-item"><input type="checkbox" name="a-out-${id}" value="คู่ค้า" onchange="toggleAudienceDetail('external', 'vendor', ${id})"> <span>คู่ค้า</span></label><div id="detail-external-vendor-${id}" class="form-group hidden" style="margin:5px 0 10px 25px;"><input type="text" id="detail-external-vendor-val-${id}" placeholder="ระบุชื่อคู่ค้า"></div></div>
+                                <div><label class="checkbox-item"><input type="checkbox" name="a-out-${id}" value="ลูกค้า" onchange="toggleAudienceDetail('external', 'customer', ${id})"> <span>ลูกค้า</span></label><div id="detail-external-customer-${id}" class="form-group hidden" style="margin:5px 0 10px 25px;"><input type="text" id="detail-external-customer-val-${id}" placeholder="ระบุกลุ่มลูกค้า"></div></div>
+                                <div><label class="checkbox-item"><input type="checkbox" name="a-out-${id}" value="ชุมชนและสังคม" onchange="toggleAudienceDetail('external', 'community', ${id})"> <span>ชุมชนและสังคม</span></label><div id="detail-external-community-${id}" class="form-group hidden" style="margin:5px 0 10px 25px;"><input type="text" id="detail-external-community-val-${id}" placeholder="ระบุชื่อชุมชน"></div></div>
+                                <div><label class="checkbox-item"><input type="checkbox" name="a-out-${id}" value="สื่อมวลชน" onchange="toggleAudienceDetail('external', 'media', ${id})"> <span>สื่อมวลชน</span></label><div id="detail-external-media-${id}" class="form-group hidden" style="margin:5px 0 10px 25px;"><input type="text" id="detail-external-media-val-${id}" placeholder="ระบุชื่อสื่อ"></div></div>
                             </div>
                         </div>
                     </div>
@@ -449,9 +429,8 @@
             document.getElementById('topics-container').insertAdjacentHTML('beforeend', html);
         }
 
-        // --- Toggle Functions ---
         function toggleType(type, id) {
-            const isChecked = document.getElementById(`type-${type}-${id}`).checked;
+            const isChecked = document.querySelector(`#topic-item-${id} .${type === 'internal' ? 'in' : 'out'}-check`).checked;
             document.getElementById(`section-${type}-${id}`).classList.toggle('hidden', !isChecked);
         }
         function toggleOtherInternal(cb, id) { document.getElementById(`other-internal-input-${id}`).classList.toggle('hidden', !cb.checked); }
@@ -461,43 +440,39 @@
             document.getElementById(`detail-${type}-${category}-${id}`).classList.toggle('hidden', !isChecked);
         }
 
-        // ================= บันทึกข้อมูล (แก้บั๊กกดไม่ได้ 100%) =================
+        // ================= บันทึกข้อมูลแบบไม่มี Error =================
         async function submitDataToServer() {
-            // เช็คช่องที่บังคับกรอกด้วยตัวเอง เพื่อไม่ให้ HTML5 ฟอร์มบล็อกแบบเงียบๆ
-            const rName = document.getElementById('recorder-name').value;
-            const rSur = document.getElementById('recorder-surname').value;
-            const eName = document.getElementById('executive-name').value;
-            if(!rName || !rSur || !eName) {
-                return Swal.fire('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อ-สกุล ใน Step 1 และ Step 2 ให้ครบถ้วน', 'warning');
+            
+            // 1. เช็คข้อมูลบังคับกรอก (Step 1 และ 2)
+            const requiredFields = ['recorder-name', 'recorder-surname', 'recorder-affiliation', 'recorder-department', 'recorder-position', 'recorder-phone', 'recorder-email', 'communication-month', 'executive-name', 'executive-surname', 'executive-position', 'executive-affiliation', 'executive-department'];
+            for (const fieldId of requiredFields) {
+                if (!document.getElementById(fieldId).value) {
+                    return Swal.fire('ข้อมูลไม่ครบถ้วน', `กรุณากรอกข้อมูลในช่องที่มีเครื่องหมาย * ให้ครบ (ขาดช่อง ${fieldId})`, 'warning');
+                }
             }
 
-            Swal.fire({ title: 'กำลังบันทึกข้อมูล...', text: 'กรุณารอสักครู่ ระบบกำลังสื่อสารกับฐานข้อมูล', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            // 2. เริ่มกระบวนการส่ง
+            Swal.fire({ title: 'กำลังบันทึกข้อมูล...', text: 'กรุณารอสักครู่ ระบบกำลังจัดเก็บข้อมูล', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             
             try {
                 const topics = [];
-                document.querySelectorAll('.communication-topic-item').forEach(item => {
-                    const id = item.id.split('-').pop();
-                    
-                    // ดึงช่องทางภายใน
-                    const cIn = Array.from(item.querySelectorAll(`input[name="c-in-${id}"]:checked`)).map(c => {
-                        return c.value === 'อื่นๆ' ? `อื่นๆ: ${document.getElementById('other-internal-text-'+id)?.value || ''}` : c.value;
-                    });
-                    
-                    // ดึงช่องทางภายนอก
-                    const cOut = Array.from(item.querySelectorAll(`input[name="c-out-${id}"]:checked`)).map(c => {
-                        return c.value === 'อื่นๆ' ? `อื่นๆ: ${document.getElementById('other-external-text-'+id)?.value || ''}` : c.value;
-                    });
+                let hasTopics = false;
 
-                    // ดึงผู้รับสารภายใน
+                document.querySelectorAll('.topic-item').forEach(item => {
+                    const id = item.id.split('-').pop();
+                    hasTopics = true;
+                    
+                    const cIn = Array.from(item.querySelectorAll(`input[name="c-in-${id}"]:checked`)).map(c => c.value === 'อื่นๆ' ? `อื่นๆ: ${document.getElementById('other-internal-text-'+id)?.value || ''}` : c.value);
+                    const cOut = Array.from(item.querySelectorAll(`input[name="c-out-${id}"]:checked`)).map(c => c.value === 'อื่นๆ' ? `อื่นๆ: ${document.getElementById('other-external-text-'+id)?.value || ''}` : c.value);
+                    
                     const aIn = Array.from(item.querySelectorAll(`input[name="a-in-${id}"]:checked`)).map(c => {
                         const input = document.getElementById(`detail-internal-staff-val-${id}`);
                         return input && input.value ? `${c.value} (${input.value})` : c.value;
                     });
-
-                    // ดึงผู้รับสารภายนอก
+                    
                     const aOut = [];
                     item.querySelectorAll(`input[name="a-out-${id}"]:checked`).forEach(c => {
-                        const match = c.getAttribute('onchange').match(/'external',\s*'([^']+)'/);
+                        const match = c.getAttribute('onchange').match(/'([^']+)'/);
                         if(match) {
                             const cat = match[1];
                             const input = document.getElementById(`detail-external-${cat}-val-${id}`);
@@ -505,9 +480,7 @@
                         } else { aOut.push(c.value); }
                     });
 
-                    // ดึงลิงก์ Drive
-                    const driveLink = document.getElementById(`drive-link-${id}`)?.value || "";
-
+                    const dLink = document.getElementById(`drive-link-${id}`)?.value || "";
                     const selTopics = Array.from(item.querySelectorAll(`input[name="topics-${id}"]:checked`)).map(c => c.value);
 
                     topics.push({
@@ -515,18 +488,21 @@
                         details: item.querySelector(`#communication-details-${id}`)?.value || "-",
                         internalChannels: cIn, externalChannels: cOut,
                         internalAudience: aIn, externalAudience: aOut,
-                        driveLink: driveLink,
-                        evidenceFiles: driveLink ? [{name: "🔗 เอกสารแนบ", url: driveLink}] : []
+                        driveLink: dLink
                     });
                 });
 
+                if (!hasTopics) {
+                    return Swal.fire('ลืมเพิ่มประเด็น!', 'คุณยังไม่ได้กด + เพิ่มประเด็นการสื่อสาร', 'warning');
+                }
+
                 const formData = {
                     id: "REC_" + Date.now(), created_date: new Date().toLocaleString('th-TH'),
-                    recorder_name: rName, recorder_surname: rSur,
-                    recorder_position: document.getElementById('recorder-position').value, recorder_affiliation: document.getElementById('recorder-affiliation').value,
-                    recorder_department: document.getElementById('recorder-department').value, recorder_phone: document.getElementById('recorder-phone').value,
+                    recorder_name: document.getElementById('recorder-name').value, recorder_surname: document.getElementById('recorder-surname').value,
+                    recorder_affiliation: document.getElementById('recorder-affiliation').value, recorder_department: document.getElementById('recorder-department').value,
+                    recorder_position: document.getElementById('recorder-position').value, recorder_phone: document.getElementById('recorder-phone').value,
                     recorder_email: document.getElementById('recorder-email').value, communication_month: document.getElementById('communication-month').value,
-                    executive_name: eName, executive_surname: document.getElementById('executive-surname').value,
+                    executive_name: document.getElementById('executive-name').value, executive_surname: document.getElementById('executive-surname').value,
                     executive_position: document.getElementById('executive-position').value, executive_affiliation: document.getElementById('executive-affiliation').value,
                     executive_department: document.getElementById('executive-department').value,
                     communication_topics_json: JSON.stringify(topics),
@@ -539,11 +515,11 @@
                 } else { throw new Error(res.message); }
             } catch (err) { 
                 console.error(err);
-                Swal.fire('เกิดข้อผิดพลาด', 'ระบบบันทึกไม่สำเร็จ: ' + err.message, 'error'); 
+                Swal.fire('เกิดข้อผิดพลาด', 'บันทึกข้อมูลไม่สำเร็จ: ' + err.message, 'error'); 
             }
-        };
+        }
 
-        // ================= ตารางข้อมูล (แบ่งหน้า 1-20) =================
+        // ================= ตารางข้อมูล =================
         function renderTable() {
             const tbody = document.getElementById('table-body');
             const total = FILTERED_RECORDS.length;
@@ -583,7 +559,7 @@
                     <td style="min-width:100px;">
                         <button class="btn-action btn-view" title="ดู" onclick="Swal.fire('Info', 'รหัสเอกสาร: ${r[0]}', 'info')">👁️</button>
                         <button class="btn-action btn-edit" title="แก้ไข" onclick="Swal.fire('Info', 'รหัสเอกสาร: ${r[0]}', 'info')">✏️</button>
-                        <button class="btn-action btn-delete" title="ลบ" onclick="Swal.fire('Info', 'รหัสเอกสาร: ${r[0]}', 'warning')">🗑️</button>
+                        <button class="btn-action btn-delete" title="ลบ" onclick="Swal.fire('Warning', 'คุณต้องการลบข้อมูลนี้หรือไม่?', 'warning')">🗑️</button>
                     </td>
                 </tr>`;
             }).join('');
@@ -593,34 +569,27 @@
             const btnContainer = document.getElementById('page-buttons');
             btnContainer.innerHTML = "";
             if (currentPage > 1) {
-                const p = document.createElement('button'); p.className = 'page-btn'; p.innerText = 'ก่อนหน้า';
-                p.onclick = () => { currentPage--; renderTable(); }; btnContainer.appendChild(p);
+                const b = document.createElement('button'); b.className = 'page-btn'; b.innerText = 'ก่อนหน้า';
+                b.onclick = () => { currentPage--; renderTable(); }; btnContainer.appendChild(b);
             }
             for (let i = 1; i <= totalPages; i++) {
                 if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-                    const btn = document.createElement('button');
-                    btn.className = `page-btn ${i === currentPage ? 'active' : ''}`;
-                    btn.innerText = i;
-                    btn.onclick = () => { currentPage = i; renderTable(); };
-                    btnContainer.appendChild(btn);
+                    const b = document.createElement('button'); b.className = `page-btn ${i === currentPage ? 'active' : ''}`; b.innerText = i;
+                    b.onclick = () => { currentPage = i; renderTable(); }; btnContainer.appendChild(b);
                 } else if (i === currentPage - 3 || i === currentPage + 3) {
                     btnContainer.appendChild(document.createTextNode(' ... '));
                 }
             }
             if (currentPage < totalPages) {
-                const n = document.createElement('button'); n.className = 'page-btn'; n.innerText = 'ถัดไป';
-                n.onclick = () => { currentPage++; renderTable(); }; btnContainer.appendChild(n);
+                const b = document.createElement('button'); b.className = 'page-btn'; b.innerText = 'ถัดไป';
+                b.onclick = () => { currentPage++; renderTable(); }; btnContainer.appendChild(b);
             }
         }
 
         function filterData() {
-            const m = document.getElementById('f-month').value;
-            const a = document.getElementById('f-aff').value;
-            const d = document.getElementById('f-dept').value;
-            const s = document.getElementById('f-search').value.toLowerCase();
+            const m = document.getElementById('f-month').value, a = document.getElementById('f-aff').value, d = document.getElementById('f-dept').value, s = document.getElementById('f-search').value.toLowerCase();
             FILTERED_RECORDS = ALL_RECORDS.filter(r => (!m || r[9] === m) && (!a || r[13] === a) && (!d || r[14] === d) && (!s || (r[10]+r[11]+r[15]).toLowerCase().includes(s)));
-            currentPage = 1;
-            renderTable();
+            currentPage = 1; renderTable();
         }
 
         function resetFilters() {
@@ -630,29 +599,27 @@
 
         // ================= Dashboard =================
         function updateDashboard() {
-            const month = document.getElementById('dash-month').value;
-            const aff = document.getElementById('dash-aff').value;
-            
-            const dashData = ALL_RECORDS.filter(r => (!month || r[9] === month) && (!aff || r[13] === aff));
+            const m = document.getElementById('dash-month').value, a = document.getElementById('dash-aff').value;
+            const dashData = ALL_RECORDS.filter(r => (!m || r[9] === m) && (!a || r[13] === a));
             
             const allUnits = Object.values(departmentData).flat();
-            const submittedDepts = new Set(dashData.map(r => r[14])); 
-            const subCount = allUnits.filter(u => submittedDepts.has(u)).length;
+            const subDepts = new Set(dashData.map(r => r[14])); 
+            const sCount = allUnits.filter(u => subDepts.has(u)).length;
 
             document.getElementById('dash-stat-total').innerText = dashData.length;
-            document.getElementById('dash-stat-submitted').innerText = subCount;
-            document.getElementById('dash-stat-pending').innerText = allUnits.length - subCount;
-            document.getElementById('dash-stat-rate').innerText = allUnits.length > 0 ? Math.round((subCount/allUnits.length)*100)+'%' : '0%';
+            document.getElementById('dash-stat-submitted').innerText = sCount;
+            document.getElementById('dash-stat-pending').innerText = allUnits.length - sCount;
+            document.getElementById('dash-stat-rate').innerText = allUnits.length > 0 ? Math.round((sCount/allUnits.length)*100)+'%' : '0%';
 
             if(chartDept) chartDept.destroy(); if(chartTopics) chartTopics.destroy();
             if(chartChannels) chartChannels.destroy(); if(chartAudiences) chartAudiences.destroy();
 
             const deptLabels = Object.keys(departmentData);
             const subArr = [], pendArr = [];
-            deptLabels.forEach(a => {
-                const uAff = departmentData[a] || [];
-                let s = 0; uAff.forEach(u => { if(submittedDepts.has(u)) s++; });
-                subArr.push(s); pendArr.push(uAff.length - s);
+            deptLabels.forEach(aff => {
+                const unitsInAff = departmentData[aff] || [];
+                let s = 0; unitsInAff.forEach(u => { if(subDepts.has(u)) s++; });
+                subArr.push(s); pendArr.push(unitsInAff.length - s);
             });
             chartDept = new Chart(document.getElementById('chart-dept').getContext('2d'), {
                 type: 'bar', data: { labels: deptLabels.map(l=>l.replace('สายงาน','')), datasets: [{ label: 'ส่งแล้ว', data: subArr, backgroundColor: '#27ae60' }, { label: 'ยังไม่ส่ง', data: pendArr, backgroundColor: '#f39c12' }] },
@@ -688,14 +655,14 @@
 
             let sHtml = '';
             for (const affName in departmentData) {
-                if (aff && aff !== affName) continue; 
+                if (a && a !== affName) continue; 
                 const units = departmentData[affName] || [];
                 let sCount = 0, uHtml = '';
                 units.forEach(u => {
-                    if (submittedDepts.has(u)) { uHtml += `<div style="font-size:13px; padding:4px 0; border-bottom:1px solid #eee;"><span style="color:#27ae60">✅</span> ${u}</div>`; sCount++; } 
-                    else { uHtml += `<div style="font-size:13px; padding:4px 0; border-bottom:1px solid #eee;"><span style="color:#f39c12">⏳</span> <span style="color:#888; font-style:italic;">${u} (ยังไม่ส่ง)</span></div>`; }
+                    if (subDepts.has(u)) { uHtml += `<div class="dept-item"><span style="color:#27ae60; margin-right:8px; font-size:16px;">✅</span><span>${u}</span></div>`; sCount++; } 
+                    else { uHtml += `<div class="dept-item"><span style="color:#f39c12; margin-right:8px; font-size:16px;">⏳</span><span style="color:#888; font-style:italic;">${u} (ยังไม่ส่ง)</span></div>`; }
                 });
-                sHtml += `<div style="margin-bottom:20px; background:#fff; padding:15px; border:1px solid #eee; border-radius:8px;"><div style="font-weight:bold; color:#2c3e50; border-bottom:2px solid #3498db; padding-bottom:8px; margin-bottom:10px;">${affName} (ส่ง ${sCount} / ${units.length})</div>${uHtml}</div>`;
+                sHtml += `<div class="aff-group"><div class="aff-header">${affName} (ส่ง ${sCount} / ${units.length})</div>${uHtml}</div>`;
             }
             document.getElementById('department-status-list').innerHTML = sHtml;
         }

@@ -1,366 +1,54 @@
-// กำหนดชื่อชีตที่จะใช้บันทึกข้อมูล
-const SHEET_NAME = "data";
-const PDF_FOLDER_NAME = "Communication_Reports_PDF";
+const SHEET_NAME = "data"; // ตรวจสอบชื่อชีตให้ตรงกับที่คุณใช้
 
-/**
- * [doGet] - ฟังก์ชันที่ใช้แสดงผล HTML เมื่อเข้าถึง Web App URL
- */
+// ฟังก์ชันรับข้อมูลจาก GitHub (บันทึกข้อมูล)
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    if (data.action === 'saveData') {
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+      const formData = data.formData;
+      
+      const newRow = [
+        formData.id, formData.created_date, formData.recorder_name, formData.recorder_surname,
+        formData.recorder_position, formData.recorder_affiliation, formData.recorder_department,
+        formData.recorder_phone, formData.recorder_email, formData.communication_month,
+        formData.executive_name, formData.executive_surname, formData.executive_position,
+        formData.executive_affiliation, formData.executive_department,
+        formData.communication_topics_json, formData.problems_obstacles, formData.executive_suggestions
+      ];
+      
+      sheet.appendRow(newRow);
+      return ContentService.createTextOutput(JSON.stringify({ status: 'success' })).setMimeType(ContentService.MimeType.JSON);
+    }
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: error.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ฟังก์ชันส่งข้อมูลกลับไปให้ GitHub (โหลดสายงาน และ ตารางข้อมูล)
 function doGet(e) {
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('ระบบรายงานแผนการสื่อสารผู้บริหาร')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-// ===================================================================
-// === (ส่วนที่ 1) ฟังก์ชันสร้าง PDF ===
-// ===================================================================
-
-function generatePdfBlob(formData) {
-  try {
-    let topicsData = [];
-    try {
-      topicsData = JSON.parse(formData.communication_topics_json || '[]');
-    } catch (e) {
-      Logger.log("Error parsing JSON in generatePdfBlob: " + e);
-    }
-
-    let tableBodyHtml = '';
-    topicsData.forEach((topic) => {
-      const executiveName = `${formData.executive_name} ${formData.executive_surname}`;
-
-      // 🚀 แสดงหลักฐานเป็น Google Drive Links
-      let evidenceText = 'ไม่มี';
-      if (Array.isArray(topic.evidenceLinks) && topic.evidenceLinks.length > 0) {
-        const validLinks = topic.evidenceLinks.filter(l => l && l.trim() !== '');
-        if (validLinks.length > 0) {
-          evidenceText = validLinks.map((url, i) =>
-            `<a href="${url}" target="_blank" style="color: #000; text-decoration: underline; font-size: 10pt; display: block;">🔗 ลิงก์ที่ ${i + 1}</a>`
-          ).join('');
-        }
-      }
-
-      const selectedTopics = (topic.selectedTopics || []).join(', ');
-      const details = topic.details || '-';
-      const allChannels = [...(topic.internalChannels || []), ...(topic.externalChannels || [])].join(', ');
-      const allAudience = [...(topic.internalAudience || []), ...(topic.externalAudience || [])].join(', ');
-
-      tableBodyHtml += `
-        <tr>
-          <td>${executiveName}</td>
-          <td><strong>${selectedTopics}</strong><hr style="margin: 4px 0;"><p class="topic-detail-text">${details}</p></td>
-          <td>${allChannels}</td>
-          <td>${allAudience}</td>
-          <td>${evidenceText}</td>
-        </tr>
-      `;
+  const action = e.parameter.action;
+  
+  if (action === 'getDepartmentData') {
+    // ดึงข้อมูลสายงานจากชีต Config
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Config"); // ต้องมีชีตชื่อ Config
+    if(!sheet) return ContentService.createTextOutput(JSON.stringify({ error: "ไม่พบชีต Config" })).setMimeType(ContentService.MimeType.JSON);
+    
+    const data = sheet.getDataRange().getValues();
+    const deptData = {};
+    data.forEach(row => { 
+      if(row[0]) deptData[row[0]] = row.slice(1).filter(String); 
     });
-
-    const recorderName = `${formData.recorder_name || ''} ${formData.recorder_surname || ''}`;
-    const recorderPosition = formData.recorder_position || '...';
-    const recorderAffiliation = formData.recorder_affiliation || '...';
-    const recorderDepartment = formData.recorder_department || '...';
-    const recorderPhone = formData.recorder_phone || '...';
-
-    const css = `
-      <style>
-        @page { size: A4 landscape; margin: 0.75in; }
-        body { font-family: 'Sarabun', sans-serif; font-size: 16pt; line-height: 1.4; font-weight: normal; }
-        h2, h3 { font-size: 18pt; font-weight: bold; text-align: center; margin: 0 0 5px 0; }
-        h3 { margin: 0 0 15px 0; }
-        .recorder-info { font-size: 16pt; margin-bottom: 10px; line-height: 1.5; word-wrap: break-word; }
-        .recorder-info strong { font-weight: bold; }
-        .print-table { width: 100%; border-collapse: collapse; font-size: 14pt; table-layout: fixed; margin-top: 15px; }
-        .print-table th, .print-table td { border: 1px solid #000; padding: 6px; text-align: left; vertical-align: top; word-wrap: break-word; }
-        .print-table th { background-color: #eee; text-align: center; font-weight: bold; }
-        .print-table p.topic-detail-text { font-size: 12pt; white-space: pre-wrap; margin: 0; padding: 0; }
-        .footer-section { font-size: 16pt; margin-top: 15px; }
-        .footer-section strong { font-weight: bold; }
-        .footer-section span { font-weight: normal; white-space: pre-wrap; padding-left: 10px; }
-        .signature-div { width: 100%; text-align: right; font-size: 16pt; font-weight: bold; }
-        .signature-div p { margin: 5px 0; padding: 0; text-align: center; width: 300px; margin-left: auto; margin-right: 0; }
-        .pdf-footer { position: fixed; bottom: 0; left: 0; width: 100%; background-color: #1976d2; color: #ffffff; padding: 10px 0; text-align: center; font-size: 10pt; }
-      </style>
-    `;
-
-    const printHtml = `
-      <h2>รายงานการสื่อสารตามแผนการสื่อสารภายในและภายนอกองค์กรของผู้บริหาร ประจำปีงบประมาณ 2569</h2>
-      <h3>ประจำเดือน ${formData.communication_month}</h3>
-      <div class="recorder-info">
-        <strong>ผู้จัดทำรายงาน:</strong> ${recorderName} &nbsp;&nbsp;
-        <strong>ตำแหน่ง:</strong> ${recorderPosition} &nbsp;&nbsp;
-        <strong>สายงาน/หน่วยงาน:</strong> ${recorderAffiliation} / ${recorderDepartment} &nbsp;&nbsp;
-        <strong>โทรศัพท์:</strong> ${recorderPhone}
-      </div>
-      <table class="print-table">
-        <thead>
-          <tr>
-            <th style="width:15%;">ผู้ถ่ายทอดสาร</th>
-            <th style="width:30%;">ประเด็นการสื่อสาร</th>
-            <th style="width:20%;">ช่องทางการสื่อสาร</th>
-            <th style="width:20%;">ผู้รับสาร</th>
-            <th style="width:15%;">หลักฐาน (ถ้ามี)</th>
-          </tr>
-        </thead>
-        <tbody>${tableBodyHtml}</tbody>
-      </table>
-      <div class="footer-section">
-        <div style="margin-bottom:5px;">
-          <strong>ปัญหาและอุปสรรคในการสื่อสาร:</strong>
-          <span>${formData.problems_obstacles || '-'}</span>
-        </div>
-        <div>
-          <strong>ข้อเสนอแนะของผู้บริหารในการสื่อสาร:</strong>
-          <span>${formData.executive_suggestions || '-'}</span>
-        </div>
-      </div>
-      <br><br><br>
-      <div class="signature-div">
-        <p>${formData.executive_name || ''} ${formData.executive_surname || ''}</p>
-        <p>${formData.executive_position || '...'}</p>
-      </div>
-      <div class="pdf-footer">
-        ส่วนข้อมูลข่าวสารและประเมินผลการสื่อสาร กองบริหารภาพลักษณ์และแผนการสื่อสาร ฝ่ายสื่อสารองค์กร โทร. 1269
-      </div>
-    `;
-
-    const fullHtml = `<!doctype html><html><head>
-      <link href="https://fonts.googleapis.com/css?family=Sarabun:400,700&display=swap" rel="stylesheet">
-      ${css}
-    </head><body>${printHtml}</body></html>`;
-
-    const htmlBlob = Utilities.newBlob(fullHtml, 'text/html', 'report.html');
-    const pdfBlob = htmlBlob.getAs('application/pdf').setName(`Report-${formData.id}.pdf`);
-    return pdfBlob;
-
-  } catch (e) {
-    Logger.log("Error in generatePdfBlob: " + e.message);
-    return null;
-  }
-}
-
-// ===================================================================
-// === (ส่วนที่ 2) ฟังก์ชัน saveData ===
-// ===================================================================
-
-function saveData(formData) {
-  try {
+    return ContentService.createTextOutput(JSON.stringify(deptData)).setMimeType(ContentService.MimeType.JSON);
+    
+  } else if (action === 'getSheetData') {
+    // ดึงข้อมูลตารางทั้งหมด
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-    if (!sheet) {
-      throw new Error(`ไม่พบชีต "${SHEET_NAME}" กรุณาสร้างชีตชื่อ "data" ก่อน`);
-    }
-
-    const newRow = [
-      formData.id, formData.created_date, formData.recorder_name, formData.recorder_surname,
-      formData.recorder_position, formData.recorder_affiliation, formData.recorder_department,
-      formData.recorder_phone, formData.recorder_email, formData.communication_month,
-      formData.executive_name, formData.executive_surname, formData.executive_position,
-      formData.executive_affiliation, formData.executive_department,
-      formData.communication_topics_json, formData.problems_obstacles, formData.executive_suggestions
-    ];
-    sheet.appendRow(newRow);
-
-    const pdfBlob = generatePdfBlob(formData);
-    const folder = getOrCreateFolder(PDF_FOLDER_NAME);
-    const fileName = `[รายงาน] ${formData.communication_month} - ${formData.executive_name} ${formData.executive_surname}.pdf`;
-    pdfBlob.setName(fileName);
-    const pdfFile = folder.createFile(pdfBlob);
-    Logger.log(`PDF saved: ${pdfFile.getUrl()}`);
-
-    // 🚀 ส่ง base64 ของ PDF กลับไปให้ browser download อัตโนมัติ
-    const pdfBase64 = Utilities.base64Encode(pdfBlob.getBytes());
-    return JSON.stringify({ status: 'success', pdfBase64: pdfBase64, fileName: fileName });
-  } catch (error) {
-    Logger.log(error);
-    return JSON.stringify({ status: 'error', message: error.message });
+    if(!sheet) return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "ไม่พบชีต data" })).setMimeType(ContentService.MimeType.JSON);
+    
+    const values = sheet.getDataRange().getDisplayValues();
+    return ContentService.createTextOutput(JSON.stringify({ status: 'success', data: values.slice(1) })).setMimeType(ContentService.MimeType.JSON);
   }
-}
-
-// ===================================================================
-// === (ส่วนที่ 3) ฟังก์ชัน sendConfirmationEmail (แก้ bug วันที่) ===
-// ===================================================================
-
-function sendConfirmationEmail(data, pdfAttachment, pdfUrl) {
-  try {
-    const recipientEmail = data.recorder_email;
-    if (!recipientEmail) {
-      Logger.log('sendConfirmationEmail: ไม่พบอีเมลผู้รับ');
-      return;
-    }
-
-    const recipientName = `${data.recorder_name} ${data.recorder_surname} (${data.recorder_position})`;
-    const executiveName  = `${data.executive_name} ${data.executive_surname} (${data.executive_position})`;
-    const communicationMonth = data.communication_month;
-
-    // 🚀 แก้ bug: ใช้ created_date ตรงๆ ไม่ต้อง parse ซับซ้อน
-    const formattedDate = data.created_date || '-';
-
-    const subject = `ยืนยันการส่งรายงานการสื่อสาร (${executiveName}) เดือน ${communicationMonth}`;
-
-    const body = `สวัสดีครับคุณ ${recipientName},
-
-ส่วนข้อมูลข่าวสารและประเมินผลการสื่อสาร กองบริหารภาพลักษณ์และแผนการสื่อสาร ฝ่ายสื่อสารองค์กร ได้รับข้อมูลการส่งรายงานการสื่อสารภายในและภายนอกองค์กรสำหรับผู้บริหาร ประจำปีงบประมาณ 2569 เรียบร้อยแล้ว
-
-(เอกสาร PDF รายงานฉบับเต็มได้ถูกแนบมาในอีเมลนี้แล้ว)
-
-รายละเอียดโดยย่อ:
-- ผู้บริหาร: ${executiveName}
-- เดือนที่สื่อสาร: ${communicationMonth}
-- ผู้บันทึก: ${recipientName} (${recipientEmail})
-- วันที่บันทึก: ${formattedDate}
-
-ส่วนข้อมูลข่าวสารและประเมินผลการสื่อสาร กองบริหารภาพลักษณ์และแผนการสื่อสาร ฝ่ายสื่อสารองค์กร ขอขอบคุณที่ส่งรายงานการสื่อสารภายในและภายนอกองค์กรสำหรับผู้บริหาร ประจำปีงบประมาณ 2569
-
-(นี่คืออีเมลอัตโนมัติ กรุณาอย่าตอบกลับ)`;
-
-    MailApp.sendEmail({
-      to: recipientEmail,
-      subject: subject,
-      body: body,
-      attachments: [pdfAttachment]
-    });
-
-    Logger.log(`Email sent to: ${recipientEmail}`);
-  } catch (error) {
-    Logger.log('Failed to send email: ' + error.message);
-    Logger.log(error.stack);
-  }
-}
-
-// ===================================================================
-// === (ส่วนที่ 4) ฟังก์ชัน CRUD ข้อมูล ===
-// ===================================================================
-
-function getSheetData() {
-  try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-    if (!sheet || sheet.getLastRow() <= 1) {
-      return JSON.stringify({ status: 'success', data: [], headers: [] });
-    }
-    const range = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn());
-    const values = range.getDisplayValues();
-    const headers = values[0];
-    const data = values.slice(1);
-    return JSON.stringify({ status: 'success', data: data, headers: headers });
-  } catch (error) {
-    Logger.log(error);
-    return JSON.stringify({ status: 'error', message: error.message });
-  }
-}
-
-function deleteData(id) {
-  try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-    const rowIndex = findRowById(sheet, id);
-    if (rowIndex === -1) throw new Error('ไม่พบข้อมูลที่ต้องการลบ (ID: ' + id + ')');
-    sheet.deleteRow(rowIndex);
-    return JSON.stringify({ status: 'success', message: 'ลบข้อมูลเรียบร้อยแล้ว', id: id });
-  } catch (error) {
-    Logger.log(error);
-    return JSON.stringify({ status: 'error', message: error.message });
-  }
-}
-
-function getRecordById(id) {
-  try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-    const rowIndex = findRowById(sheet, id);
-    if (rowIndex === -1) throw new Error('ไม่พบข้อมูล (ID: ' + id + ')');
-    const range = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn());
-    const data = range.getDisplayValues()[0];
-    const keys = [
-      'id', 'created_date', 'recorder_name', 'recorder_surname',
-      'recorder_position', 'recorder_affiliation', 'recorder_department',
-      'recorder_phone', 'recorder_email', 'communication_month',
-      'executive_name', 'executive_surname', 'executive_position',
-      'executive_affiliation', 'executive_department',
-      'communication_topics_json', 'problems_obstacles', 'executive_suggestions'
-    ];
-    const record = {};
-    keys.forEach((key, index) => { if (data[index] !== undefined) record[key] = data[index]; });
-    return JSON.stringify({ status: 'success', data: record });
-  } catch (error) {
-    Logger.log(error);
-    return JSON.stringify({ status: 'error', message: error.message });
-  }
-}
-
-function updateData(formData) {
-  try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-    const rowIndex = findRowById(sheet, formData.id);
-    if (rowIndex === -1) throw new Error('ไม่พบข้อมูลที่ต้องการอัปเดต (ID: ' + formData.id + ')');
-    const updatedRow = [
-      formData.id, formData.created_date, formData.recorder_name, formData.recorder_surname,
-      formData.recorder_position, formData.recorder_affiliation, formData.recorder_department,
-      formData.recorder_phone, formData.recorder_email, formData.communication_month,
-      formData.executive_name, formData.executive_surname, formData.executive_position,
-      formData.executive_affiliation, formData.executive_department,
-      formData.communication_topics_json, formData.problems_obstacles, formData.executive_suggestions
-    ];
-    sheet.getRange(rowIndex, 1, 1, updatedRow.length).setValues([updatedRow]);
-    return JSON.stringify({ status: 'success', message: 'อัปเดตข้อมูลเรียบร้อยแล้ว' });
-  } catch (error) {
-    Logger.log(error);
-    return JSON.stringify({ status: 'error', message: error.message });
-  }
-}
-
-function findRowById(sheet, id) {
-  const columnAValues = sheet.getRange("A:A").getValues();
-  for (let i = 0; i < columnAValues.length; i++) {
-    if (columnAValues[i][0] == id) return i + 1;
-  }
-  return -1;
-}
-
-// ===================================================================
-// === (ส่วนที่ 5) ฟังก์ชันส่งออก PDF ===
-// ===================================================================
-
-function generatePdfForRecordId(recordId, fileName) {
-  try {
-    const recordResponse = getRecordById(recordId);
-    const recordResult = JSON.parse(recordResponse);
-    if (recordResult.status !== 'success') throw new Error('ไม่พบข้อมูล (ID: ' + recordId + ')');
-
-    const formData = recordResult.data;
-    const pdfBlob = generatePdfBlob(formData);
-    if (!pdfBlob) throw new Error("เกิดข้อผิดพลาดในการสร้าง PDF");
-
-    pdfBlob.setName(fileName + '.pdf');
-    const folder = getOrCreateFolder(PDF_FOLDER_NAME);
-    const pdfFile = folder.createFile(pdfBlob);
-    return JSON.stringify({ status: 'success', url: pdfFile.getUrl() });
-  } catch (error) {
-    Logger.log('Error in generatePdfForRecordId: ' + error.message);
-    return JSON.stringify({ status: 'error', message: error.message });
-  }
-}
-
-// ===================================================================
-// === (ส่วนที่ 6) ฟังก์ชัน Helper ===
-// ===================================================================
-
-function getOrCreateFolder(folderName) {
-  const folders = DriveApp.getFoldersByName(folderName);
-  if (folders.hasNext()) return folders.next();
-  return DriveApp.createFolder(folderName);
-}
-
-function getDepartmentData() {
-  try {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Config");
-    if (!sheet) throw new Error("ไม่พบชีต 'Config'");
-    const dataValues = sheet.getDataRange().getValues();
-    const departmentData = {};
-    dataValues.forEach(row => {
-      if (row[0]) {
-        departmentData[row[0]] = row.slice(1).filter(String);
-      }
-    });
-    return departmentData;
-  } catch (e) {
-    Logger.log("Error in getDepartmentData: " + e.message);
-    throw new Error("GAS Error: " + e.message);
-  }
+  
+  return ContentService.createTextOutput("API is running").setMimeType(ContentService.MimeType.JSON);
 }

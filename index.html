@@ -11,51 +11,50 @@
     <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
 
     <style>
-        /* CSS ต้นฉบับที่คุณต้องการ */
+        /* --- CSS ต้นฉบับ (Purple Gradient & White Container) --- */
         body { font-family: 'Sarabun', sans-serif; margin: 0; padding: 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
-        .container { max-width: 1200px; margin: 20px auto; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden; }
-        .header { background: #2c3e50; color: white; padding: 20px; text-align: center; }
+        .container { max-width: 1200px; margin: 20px auto; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); overflow: hidden; }
+        .header { background: #2c3e50; color: white; padding: 25px; text-align: center; }
         .tabs { display: flex; background: #f8f9fa; border-bottom: 2px solid #dee2e6; }
-        .tab { flex: 1; padding: 15px; border: none; cursor: pointer; font-size: 16px; font-weight: 600; color: #495057; transition: 0.3s; }
-        .tab.active { background: white; border-bottom: 4px solid #3498db; color: #2c3e50; }
-        .tab-content { display: none; padding: 30px; min-height: 400px; }
+        .tab { flex: 1; padding: 15px; border: none; cursor: pointer; font-size: 16px; font-weight: 600; transition: 0.3s; border-bottom: 4px solid transparent; }
+        .tab.active { background: white; border-bottom-color: #3498db; color: #2c3e50; }
+        .tab-content { display: none; padding: 30px; }
         .tab-content.active { display: block; }
         
-        /* สไตล์ฟอร์ม */
+        /* Step Indicator */
         .step-indicator { display: flex; justify-content: space-between; margin-bottom: 30px; gap: 10px; }
-        .step { flex: 1; text-align: center; padding: 12px; background: #ffffff; border-radius: 8px; font-weight: 600; color: #6c757d; border: 2px solid #e9ecef; }
+        .step { flex: 1; text-align: center; padding: 12px; background: #ffffff; border-radius: 8px; font-weight: 600; color: #6c757d; border: 2px solid #e9ecef; position: relative; }
         .step.active { border-color: #3498db; color: #3498db; background: #ebf5fb; }
         .step.completed { background: #27ae60; color: white; border-color: #27ae60; }
-        
-        .form-section { background: #fff; padding: 25px; margin-bottom: 25px; border-radius: 12px; border: 1px solid #e9ecef; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 15px; }
-        .form-group { display: flex; flex-direction: column; margin-bottom: 15px; }
+        .step.completed::after { content: ' ✓'; }
+
+        .form-section { background: #fff; padding: 25px; margin-bottom: 25px; border-radius: 12px; border: 1px solid #e9ecef; box-shadow: 0 2px 15px rgba(0,0,0,0.05); }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; margin-bottom: 15px; text-align: left; }
         .form-group label { font-weight: 600; margin-bottom: 8px; color: #2c3e50; }
-        .form-group input, .form-group select, .form-group textarea { padding: 12px; border: 1px solid #dee2e6; border-radius: 8px; font-size: 14px; background: #fdfdfd; }
+        .form-group input, .form-group select, .form-group textarea { padding: 12px; border: 1px solid #dee2e6; border-radius: 8px; font-size: 14px; }
         
-        /* Checkbox Styles */
-        .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; background: #f4f7f6; padding: 15px; border-radius: 8px; border: 1px solid #ddd; }
-        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
-        
+        /* Checkbox Styling */
+        .checkbox-container { background: #f9f9f9; padding: 15px; border-radius: 8px; border: 1px solid #eee; margin-top: 10px; }
+        .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+        .checkbox-item { display: flex; align-items: center; gap: 10px; font-size: 14px; cursor: pointer; padding: 5px; }
+        .sub-section { margin-top: 15px; padding: 15px; border-left: 4px solid #3498db; background: #f0f7ff; border-radius: 0 8px 8px 0; }
+
         .btn { padding: 12px 25px; border-radius: 8px; cursor: pointer; border: none; font-size: 16px; font-weight: bold; transition: 0.3s; margin: 5px; }
         .btn-primary { background: #3498db; color: white; }
         .btn-success { background: #27ae60; color: white; }
         .btn-warning { background: #f39c12; color: white; }
         
         .hidden { display: none; }
-        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; }
-        .loading-overlay.show { display: flex; }
         
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 13px; }
-        th { background: #34495e; color: white; padding: 12px; text-align: left; }
-        td { padding: 10px; border-bottom: 1px solid #eee; }
+        /* Table Style */
+        table { width: 100%; border-collapse: collapse; background: white; font-size: 13px; }
+        th { background: #34495e; color: white; padding: 15px; text-align: left; position: sticky; top: 0; }
+        td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: top; }
+        .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin: 2px; color: white; }
     </style>
 </head>
 <body>
-    <div class="loading-overlay" id="loading">
-        <div style="border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite;"></div>
-        <p>กำลังประมวลผล ข้อมูลอาจใช้เวลาโหลดสักครู่...</p>
-    </div>
 
     <div class="container">
         <header class="header">
@@ -79,10 +78,10 @@
             <form id="communication-form">
                 <div id="form-step-1" class="form-step">
                     <div class="form-section">
-                        <h3>👤 ข้อมูลผู้บันทึก</h3>
+                        <h3>👤 1. ข้อมูลผู้บันทึก</h3>
                         <div class="form-row">
-                            <div class="form-group"><label>ชื่อผู้บันทึกข้อมูล *</label><input type="text" id="recorder-name" required></div>
-                            <div class="form-group"><label>นามสกุลผู้บันทึกข้อมูล *</label><input type="text" id="recorder-surname" required></div>
+                            <div class="form-group"><label>ชื่อ *</label><input type="text" id="recorder-name" required></div>
+                            <div class="form-group"><label>นามสกุล *</label><input type="text" id="recorder-surname" required></div>
                         </div>
                         <div class="form-row">
                             <div class="form-group"><label>ตำแหน่ง *</label><input type="text" id="recorder-position" required></div>
@@ -92,22 +91,22 @@
                             <div class="form-group"><label>หน่วยงาน *</label><select id="recorder-department" disabled required><option value="">เลือกสายงานก่อน</option></select></div>
                             <div class="form-group"><label>เบอร์โทรศัพท์ *</label><input type="tel" id="recorder-phone" required></div>
                         </div>
-                        <div class="form-group"><label>อีเมล (เพื่อรับไฟล์ PDF) *</label><input type="email" id="recorder-email" required></div>
+                        <div class="form-group"><label>อีเมล *</label><input type="email" id="recorder-email" required></div>
                     </div>
-                    <div style="text-align: center;"><button type="button" class="btn btn-primary" onclick="nextStep(2)">ถัดไป ➡️</button></div>
+                    <div style="text-align: center;"><button type="button" class="btn btn-primary" onclick="nextStep(2)">ถัดไป</button></div>
                 </div>
 
                 <div id="form-step-2" class="form-step hidden">
                     <div class="form-section">
-                        <h3>👔 ข้อมูลผู้บริหาร</h3>
+                        <h3>👔 2. ข้อมูลผู้บริหาร</h3>
                         <div class="form-group">
                             <label>เดือนที่ทำการสื่อสาร *</label>
                             <select id="communication-month" required>
                                 <option value="">เลือกเดือน</option>
-                                <option value="ตุลาคม 2568">ตุลาคม 2568</option><option value="พฤศจิกายน 2568">พฤศจิกายน 2568</option><option value="ธันวาคม 2568">ธันวาคม 2568</option>
-                                <option value="มกราคม 2569">มกราคม 2569</option><option value="กุมภาพันธ์ 2569">กุมภาพันธ์ 2569</option><option value="มีนาคม 2569">มีนาคม 2569</option>
-                                <option value="เมษายน 2569">เมษายน 2569</option><option value="พฤษภาคม 2569">พฤษภาคม 2569</option><option value="มิถุนายน 2569">มิถุนายน 2569</option>
-                                <option value="กรกฎาคม 2569">กรกฎาคม 2569</option><option value="สิงหาคม 2569">สิงหาคม 2569</option><option value="กันยายน 2569">กันยายน 2569</option>
+                                <option>ตุลาคม 2568</option><option>พฤศจิกายน 2568</option><option>ธันวาคม 2568</option>
+                                <option>มกราคม 2569</option><option>กุมภาพันธ์ 2569</option><option>มีนาคม 2569</option>
+                                <option>เมษายน 2569</option><option>พฤษภาคม 2569</option><option>มิถุนายน 2569</option>
+                                <option>กรกฎาคม 2569</option><option>สิงหาคม 2569</option><option>กันยายน 2569</option>
                             </select>
                         </div>
                         <div class="form-row">
@@ -118,45 +117,81 @@
                             <div class="form-group"><label>ตำแหน่งผู้บริหาร *</label><input type="text" id="executive-position" required></div>
                             <div class="form-group"><label>สายงานผู้บริหาร *</label><select id="executive-affiliation" onchange="updateDepts('executive')" required><option value="">เลือกสายงาน</option></select></div>
                         </div>
+                        <div class="form-group"><label>หน่วยงานผู้บริหาร *</label><select id="executive-department" disabled required><option value="">เลือกสายงานก่อน</option></select></div>
                     </div>
-                    <div style="text-align: center;"><button type="button" class="btn btn-warning" onclick="prevStep(1)">⬅️ ย้อนกลับ</button> <button type="button" class="btn btn-primary" onclick="nextStep(3)">ถัดไป ➡️</button></div>
+                    <div style="text-align: center;"><button type="button" class="btn btn-warning" onclick="prevStep(1)">ย้อนกลับ</button><button type="button" class="btn btn-primary" onclick="nextStep(3)">ถัดไป</button></div>
                 </div>
 
                 <div id="form-step-3" class="form-step hidden">
                     <div class="form-section">
-                        <h3>📢 รายละเอียดการสื่อสาร</h3>
+                        <h3>📢 3. รายละเอียดการสื่อสาร</h3>
                         <div class="form-group">
                             <label>เลือกประเด็นการสื่อสาร (เลือกได้หลายประเด็น) *</label>
-                            <div class="checkbox-grid" id="topics-list">
-                                <label class="checkbox-item"><input type="checkbox" name="topic" value="Water Safety Plan"> Water Safety Plan/การสร้างความเชื่อมั่น</label>
-                                <label class="checkbox-item"><input type="checkbox" name="topic" value="Digital Service"> งานบริการของ กปน. (Digital Service)</label>
-                                <label class="checkbox-item"><input type="checkbox" name="topic" value="ลดน้ำสูญเสีย"> การลดน้ำสูญเสีย</label>
-                                <label class="checkbox-item"><input type="checkbox" name="topic" value="วิสัยทัศน์"> วิสัยทัศน์ พันธกิจ ค่านิยม</label>
-                                <label class="checkbox-item"><input type="checkbox" name="topic" value="ธรรมาภิบาล"> ธรรมาภิบาลและจริยธรรม</label>
+                            <div class="checkbox-container">
+                                <div class="checkbox-grid">
+                                    <label class="checkbox-item"><input type="checkbox" name="topic" value="Water Safety Plan"> Water Safety Plan/การสร้างความเชื่อมั่น</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="topic" value="Digital Service"> งานบริการของ กปน. (Digital Service)</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="topic" value="การลดน้ำสูญเสีย"> การลดน้ำสูญเสีย</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="topic" value="วิสัยทัศน์ พันธกิจ ค่านิยม"> วิสัยทัศน์ พันธกิจ ค่านิยม</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="topic" value="ธรรมาภิบาลและจริยธรรม"> ธรรมาภิบาลและจริยธรรม</label>
+                                </div>
                             </div>
                         </div>
+
                         <div class="form-group">
                             <label>รายละเอียดที่ทำการสื่อสาร *</label>
-                            <textarea id="communication-details" rows="4" placeholder="ระบุรายละเอียดกิจกรรมหรือเนื้อหาที่สื่อสาร"></textarea>
+                            <textarea id="communication-details" rows="4" placeholder="กรอกรายละเอียด..."></textarea>
                         </div>
+
                         <div class="form-group">
                             <label>ช่องทางการสื่อสาร *</label>
                             <div style="display:flex; gap:20px; margin-bottom:10px;">
-                                <label><input type="checkbox" id="type-internal"> การสื่อสารภายใน</label>
-                                <label><input type="checkbox" id="type-external"> การสื่อสารภายนอก</label>
+                                <label><input type="checkbox" id="type-internal" onchange="toggleSubSection('internal')"> การสื่อสารภายใน</label>
+                                <label><input type="checkbox" id="type-external" onchange="toggleSubSection('external')"> การสื่อสารภายนอก</label>
+                            </div>
+
+                            <div id="section-internal" class="sub-section hidden">
+                                <strong>ช่องทางภายใน:</strong>
+                                <div class="checkbox-grid">
+                                    <label class="checkbox-item"><input type="checkbox" name="chan-in" value="การประชุม"> การประชุม</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="chan-in" value="การตรวจเยี่ยม"> การตรวจเยี่ยม</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="chan-in" value="Line Application"> Line Application</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="chan-in" value="Social Media"> Social Media หน่วยงาน</label>
+                                </div>
+                                <br>
+                                <strong>ผู้รับสารภายใน:</strong>
+                                <div class="checkbox-grid">
+                                    <label class="checkbox-item"><input type="checkbox" name="aud-in" value="บุคลากร กปน."> บุคลากรภายใน กปน.</label>
+                                </div>
+                            </div>
+
+                            <div id="section-external" class="sub-section hidden" style="border-left-color: #e67e22;">
+                                <strong>ช่องทางภายนอก:</strong>
+                                <div class="checkbox-grid">
+                                    <label class="checkbox-item"><input type="checkbox" name="chan-out" value="การประชุมภายนอก"> การประชุมกับหน่วยงานภายนอก</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="chan-out" value="การแถลงข่าว"> การแถลงข่าว/สัมภาษณ์</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="chan-out" value="หนังสือภายนอก"> หนังสือภายนอก</label>
+                                </div>
+                                <br>
+                                <strong>ผู้รับสารภายนอก:</strong>
+                                <div class="checkbox-grid">
+                                    <label class="checkbox-item"><input type="checkbox" name="aud-out" value="ลูกค้า"> ลูกค้า</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="aud-out" value="หน่วยงานรัฐ"> หน่วยงานภาครัฐ</label>
+                                    <label class="checkbox-item"><input type="checkbox" name="aud-out" value="ชุมชน"> ชุมชนและสังคม</label>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    <div style="text-align: center;"><button type="button" class="btn btn-warning" onclick="prevStep(2)">⬅️ ย้อนกลับ</button> <button type="button" class="btn btn-primary" onclick="nextStep(4)">ถัดไป ➡️</button></div>
+                    <div style="text-align: center;"><button type="button" class="btn btn-warning" onclick="prevStep(2)">ย้อนกลับ</button><button type="button" class="btn btn-primary" onclick="nextStep(4)">ถัดไป</button></div>
                 </div>
 
                 <div id="form-step-4" class="form-step hidden">
                     <div class="form-section">
-                        <h3>📝 ปัญหาและข้อเสนอแนะ</h3>
-                        <div class="form-group"><label>ปัญหาและอุปสรรคในการสื่อสาร</label><textarea id="problems-obstacles" rows="3" placeholder="กรุณากรอกปัญหา (ถ้ามี)"></textarea></div>
-                        <div class="form-group"><label>ข้อเสนอแนะของผู้บริหาร</label><textarea id="executive-suggestions" rows="3" placeholder="กรุณากรอกข้อเสนอแนะ (ถ้ามี)"></textarea></div>
+                        <h3>📝 4. ปัญหาและข้อเสนอแนะ</h3>
+                        <div class="form-group"><label>ปัญหาและอุปสรรค</label><textarea id="problems" rows="3"></textarea></div>
+                        <div class="form-group"><label>ข้อเสนอแนะ</label><textarea id="suggestions" rows="3"></textarea></div>
                     </div>
-                    <div style="text-align: center;"><button type="button" class="btn btn-warning" onclick="prevStep(3)">⬅️ ย้อนกลับ</button> <button type="submit" class="btn btn-success">💾 บันทึกข้อมูล</button></div>
+                    <div style="text-align: center;"><button type="button" class="btn btn-warning" onclick="prevStep(3)">ย้อนกลับ</button><button type="submit" class="btn btn-success">บันทึกข้อมูล</button></div>
                 </div>
             </form>
         </div>
@@ -165,154 +200,197 @@
             <div class="form-section">
                 <h3>🔍 ค้นหาและกรองข้อมูล</h3>
                 <div class="form-row">
-                    <div class="form-group"><label>เลือกเดือน</label><select id="filter-month" onchange="filterDataTable()"><option value="">ทุกเดือน</option></select></div>
-                    <div class="form-group"><label>สายงาน</label><select id="filter-aff" onchange="filterDataTable()"><option value="">ทุกสายงาน</option></select></div>
+                    <div class="form-group"><label>เลือกเดือน</label><select id="f-month" onchange="filterData()"><option value="">ทุกเดือน</option></select></div>
+                    <div class="form-group"><label>สายงาน</label><select id="f-aff" onchange="filterData()"><option value="">ทุกสายงาน</option></select></div>
                 </div>
-                <div id="table-wrapper" style="overflow-x:auto;">
-                    <table id="data-table">
+                <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #ddd;">
+                    <table id="main-table">
                         <thead>
                             <tr><th>ลำดับ</th><th>เดือน</th><th>ผู้ถ่ายทอด</th><th>ประเด็น</th><th>ช่องทาง</th><th>ผู้รับสาร</th><th>ผู้บันทึก</th></tr>
                         </thead>
-                        <tbody id="data-tbody">
-                            </tbody>
+                        <tbody id="table-body"></tbody>
                     </table>
                 </div>
             </div>
         </div>
 
         <div id="dashboard-tab" class="tab-content">
-            <div class="form-section">
-                <h3>📊 สถิติการรายงาน</h3>
-                <div class="form-row">
-                    <div style="background:#3498db; color:white; padding:20px; border-radius:10px; text-align:center;">
-                        <h2 id="stat-total">0</h2><p>รายงานทั้งหมด</p>
-                    </div>
+            <div class="form-section" style="text-align: center;">
+                <div style="background: #3498db; color: white; padding: 30px; border-radius: 15px; display: inline-block; min-width: 300px;">
+                    <h1 id="stat-total" style="font-size: 48px; margin: 0;">0</h1>
+                    <p style="font-size: 18px; margin: 0;">รายงานทั้งหมด</p>
                 </div>
-                <div class="form-row">
-                    <canvas id="chart-aff" style="max-height:300px;"></canvas>
+                <div class="form-row" style="margin-top: 30px;">
+                    <canvas id="chart-canvas" style="max-height: 400px;"></canvas>
                 </div>
             </div>
         </div>
+
     </div>
 
-    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
-
     <script>
-        // 🔗 URL Web App จาก Google Apps Script (ตัวที่คุณส่งมา)
         const GAS_URL = "https://script.google.com/macros/s/AKfycbzttpFhHFVRRI7uvzo3pzW81Zs-3NAPP0A2gMEZFZdyoN2m0Z-fkeriQBkxvAP_V6QK9Q/exec";
-
-        let departmentData = {};
         let ALL_RECORDS = [];
+        let departmentData = {};
+        let currentStep = 1;
 
-        // ฟังก์ชันส่งข้อมูลไปยัง Google
         async function callGAS(data, method = 'POST') {
             const url = (method === 'GET') ? `${GAS_URL}?${new URLSearchParams(data)}` : GAS_URL;
-            const response = await fetch(url, { method: method, mode: 'cors', body: method === 'POST' ? JSON.stringify(data) : null });
-            return await response.json();
+            const res = await fetch(url, { method: method, mode: 'cors', body: method === 'POST' ? JSON.stringify(data) : null });
+            return await res.json();
         }
 
-        // โหลดข้อมูลเริ่มต้น
         window.onload = async () => {
-            toggleLoading(true);
+            Swal.fire({ title: 'กำลังโหลดข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
             try {
-                // 1. ดึงข้อมูลสายงาน/หน่วยงานจาก Config ใน Sheet
+                // โหลด Config
                 departmentData = await callGAS({ action: 'getDepartmentData' }, 'GET');
-                const affSelects = ['recorder-affiliation', 'executive-affiliation', 'filter-aff'];
-                Object.keys(departmentData).forEach(aff => {
-                    affSelects.forEach(id => document.getElementById(id).appendChild(new Option(aff, aff)));
+                const affs = Object.keys(departmentData);
+                ['recorder-affiliation', 'executive-affiliation', 'f-aff'].forEach(id => {
+                    const el = document.getElementById(id);
+                    affs.forEach(a => el.appendChild(new Option(a, a)));
                 });
 
-                // 2. ดึงข้อมูลรายงานทั้งหมดมาเตรียมไว้
-                const response = await callGAS({ action: 'getSheetData' }, 'GET');
-                if(response.status === 'success') {
-                    ALL_RECORDS = response.data;
-                    renderTable(ALL_RECORDS);
-                    updateStats(ALL_RECORDS);
-                }
-            } catch (e) {
-                console.error("Initialization error:", e);
-                Swal.fire("Error", "โหลดข้อมูลไม่สำเร็จ กรุณาลองใหม่", "error");
-            }
-            toggleLoading(false);
+                // โหลด Data
+                const res = await callGAS({ action: 'getSheetData' }, 'GET');
+                ALL_RECORDS = res.data;
+                renderTable(ALL_RECORDS);
+                updateDashboard(ALL_RECORDS);
+                
+                // โหลดเดือนเข้าตัวกรอง
+                const months = [...new Set(ALL_RECORDS.map(r => r[9]))];
+                months.forEach(m => document.getElementById('f-month').appendChild(new Option(m, m)));
+
+                Swal.close();
+            } catch (e) { Swal.fire('Error', 'โหลดข้อมูลไม่สำเร็จ', 'error'); }
         };
 
-        function updateDepts(type) {
-            const aff = document.getElementById(`${type}-affiliation`).value;
-            const deptSelect = document.getElementById(`${type}-department`);
-            deptSelect.innerHTML = '<option value="">เลือกหน่วยงาน</option>';
-            if(aff && departmentData[aff]) {
-                departmentData[aff].forEach(d => deptSelect.appendChild(new Option(d, d)));
-                deptSelect.disabled = false;
-            } else { deptSelect.disabled = true; }
+        function toggleSubSection(type) {
+            document.getElementById(`section-${type}`).classList.toggle('hidden', !document.getElementById(`type-${type}`).checked);
         }
 
         function showTab(name) {
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.getElementById(name + '-tab').classList.add('active');
+            document.querySelectorAll('.tab-content, .tab').forEach(el => el.classList.remove('active'));
+            document.getElementById(`${name}-tab`).classList.add('active');
             event.target.classList.add('active');
-            if(name === 'dashboard') drawCharts();
         }
 
         function nextStep(s) {
-            document.querySelectorAll('.form-step').forEach(step => step.classList.add('hidden'));
+            document.querySelectorAll('.form-step').forEach(el => el.classList.add('hidden'));
             document.getElementById(`form-step-${s}`).classList.remove('hidden');
             document.getElementById(`step${s}`).classList.add('active');
             currentStep = s;
         }
 
         function prevStep(s) {
-            document.querySelectorAll('.form-step').forEach(step => step.classList.add('hidden'));
+            document.querySelectorAll('.form-step').forEach(el => el.classList.add('hidden'));
             document.getElementById(`form-step-${s}`).classList.remove('hidden');
             document.getElementById(`step${s+1}`).classList.remove('active');
             currentStep = s;
         }
 
-        function toggleLoading(show) {
-            document.getElementById('loading').classList.toggle('show', show);
-        }
-
-        // บันทึกข้อมูล
+        // --- ระบบบันทึกข้อมูล พร้อม SweetAlert ---
         document.getElementById('communication-form').onsubmit = async (e) => {
             e.preventDefault();
-            toggleLoading(true);
+            
+            const topics = Array.from(document.querySelectorAll('input[name="topic"]:checked')).map(cb => cb.value);
+            const chanIn = Array.from(document.querySelectorAll('input[name="chan-in"]:checked')).map(cb => cb.value);
+            const chanOut = Array.from(document.querySelectorAll('input[name="chan-out"]:checked')).map(cb => cb.value);
+            const audIn = Array.from(document.querySelectorAll('input[name="aud-in"]:checked')).map(cb => cb.value);
+            const audOut = Array.from(document.querySelectorAll('input[name="aud-out"]:checked')).map(cb => cb.value);
+
             const formData = {
                 id: "rec_" + Date.now(),
-                created_date: new Date().toLocaleString(),
+                created_date: new Date().toLocaleString('th-TH'),
                 recorder_name: document.getElementById('recorder-name').value,
+                recorder_surname: document.getElementById('recorder-surname').value,
+                recorder_position: document.getElementById('recorder-position').value,
+                recorder_affiliation: document.getElementById('recorder-affiliation').value,
+                recorder_department: document.getElementById('recorder-department').value,
+                recorder_phone: document.getElementById('recorder-phone').value,
                 recorder_email: document.getElementById('recorder-email').value,
                 communication_month: document.getElementById('communication-month').value,
                 executive_name: document.getElementById('executive-name').value,
-                // ... เก็บข้อมูลอื่นๆ ให้ครบตามที่ชีตต้องการ
+                executive_surname: document.getElementById('executive-surname').value,
+                executive_position: document.getElementById('executive-position').value,
+                executive_affiliation: document.getElementById('executive-affiliation').value,
+                executive_department: document.getElementById('executive-department').value,
+                communication_topics_json: JSON.stringify([{
+                    selectedTopics: topics,
+                    details: document.getElementById('communication-details').value,
+                    internalChannels: chanIn,
+                    externalChannels: chanOut,
+                    internalAudience: audIn,
+                    externalAudience: audOut
+                }]),
+                problems_obstacles: document.getElementById('problems').value,
+                executive_suggestions: document.getElementById('suggestions').value
             };
+
+            Swal.fire({ title: 'กำลังบันทึกข้อมูล...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
             try {
                 const res = await callGAS({ action: 'saveData', formData: formData }, 'POST');
-                if(res.status === 'success') {
-                    Swal.fire("สำเร็จ!", "บันทึกข้อมูลและส่ง PDF เรียบร้อย", "success").then(() => location.reload());
-                }
-            } catch (err) {
-                Swal.fire("ผิดพลาด", "ไม่สามารถส่งข้อมูลได้", "error");
-            }
-            toggleLoading(false);
+                if (res.status === 'success') {
+                    Swal.fire('สำเร็จ!', 'บันทึกข้อมูลและส่งอีเมลยืนยันเรียบร้อยแล้ว', 'success').then(() => location.reload());
+                } else { throw new Error(res.message); }
+            } catch (err) { Swal.fire('ผิดพลาด', err.message, 'error'); }
         };
 
+        // --- การแสดงผลตาราง (ถอดรหัส JSON) ---
         function renderTable(data) {
-            const tbody = document.getElementById('data-tbody');
-            tbody.innerHTML = data.map((r, i) => `
-                <tr>
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = data.map((r, i) => {
+                let topics = "-", channels = "-", audiences = "-";
+                try {
+                    const json = JSON.parse(r[15] || "[]")[0];
+                    if(json) {
+                        topics = json.selectedTopics.join(', ');
+                        channels = [...json.internalChannels, ...json.externalChannels].map(c => `<span class="tag" style="background:#3498db">${c}</span>`).join('');
+                        audiences = [...json.internalAudience, ...json.externalAudience].map(a => `<span class="tag" style="background:#27ae60">${a}</span>`).join('');
+                    }
+                } catch(e) {}
+                
+                return `<tr>
                     <td>${i+1}</td>
-                    <td>${r[9]}</td> <td>${r[10]} ${r[11]}</td> <td>${r[15]}</td> <td>-</td><td>-</td>
-                    <td>${r[2]}</td> </tr>
-            `).join('');
+                    <td>${r[9]}</td>
+                    <td><strong>${r[10]}</strong><br><small>${r[13]}</small></td>
+                    <td>${topics}</td>
+                    <td>${channels}</td>
+                    <td>${audiences}</td>
+                    <td>${r[2]}</td>
+                </tr>`;
+            }).reverse().join('');
         }
 
-        function updateStats(data) {
+        function filterData() {
+            const m = document.getElementById('f-month').value;
+            const a = document.getElementById('f-aff').value;
+            const filtered = ALL_RECORDS.filter(r => (!m || r[9] === m) && (!a || r[13] === a));
+            renderTable(filtered);
+        }
+
+        function updateDashboard(data) {
             document.getElementById('stat-total').innerText = data.length;
+            // โค้ดวาดกราฟเบื้องต้น
+            const ctx = document.getElementById('chart-canvas').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: [...new Set(data.map(r => r[13]))],
+                    datasets: [{ label: 'จำนวนรายงานตามสายงาน', data: [...new Set(data.map(r => r[13]))].map(a => data.filter(r => r[13] === a).length), backgroundColor: '#3498db' }]
+                }
+            });
         }
 
-        function drawCharts() {
-            // โค้ดสำหรับวาดกราฟ Chart.js
+        function updateDepts(type) {
+            const aff = document.getElementById(`${type}-affiliation`).value;
+            const ds = document.getElementById(`${type}-department`);
+            ds.innerHTML = '<option value="">เลือกหน่วยงาน</option>';
+            if(aff && departmentData[aff]) {
+                departmentData[aff].forEach(d => ds.appendChild(new Option(d, d)));
+                ds.disabled = false;
+            } else { ds.disabled = true; }
         }
     </script>
 </body>

@@ -1,54 +1,753 @@
-const SHEET_NAME = "data"; // ตรวจสอบชื่อชีตให้ตรงกับที่คุณใช้
+const SHEET_NAME = 'data';
+const CONFIG_SHEET_NAME = 'Config';
+const EVIDENCE_FOLDER_NAME = 'Communication_Evidence_Uploads';
+const PDF_FOLDER_NAME = 'Communication_Reports_PDF';
 
-// ฟังก์ชันรับข้อมูลจาก GitHub (บันทึกข้อมูล)
+const DATA_HEADERS = [
+  'id',
+  'created_date',
+  'recorder_name',
+  'recorder_surname',
+  'recorder_position',
+  'recorder_affiliation',
+  'recorder_department',
+  'recorder_phone',
+  'recorder_email',
+  'communication_month',
+  'executive_name',
+  'executive_surname',
+  'executive_position',
+  'executive_affiliation',
+  'executive_department',
+  'communication_topics_json',
+  'evidence_links',
+  'problems_obstacles',
+  'executive_suggestions',
+];
+
+function doGet() {
+  const e = arguments && arguments.length ? arguments[0] : null;
+
+  // Support simple GET API calls for external web apps (JSON / JSONP).
+  // Keep default behavior (render Index) when no action is provided.
+  if (e && e.parameter && e.parameter.action) {
+    try {
+      const action = String(e.parameter.action || '');
+      const callback = e.parameter.callback ? String(e.parameter.callback) : '';
+
+      let result;
+      switch (action) {
+        // Backward-compatible alias for older frontends.
+        case 'getData':
+        case 'getSheetData':
+          result = normalizeResult_(getSheetData());
+          break;
+
+        case 'getRecordById':
+          result = normalizeResult_(getRecordById(String(e.parameter.id || '')));
+          break;
+
+        // Backward-compatible delete endpoint for older frontends.
+        // If Script Property ADMIN_KEY is configured, require `key=` to match.
+        case 'delete':
+        case 'deleteData': {
+          const adminKey = PropertiesService.getScriptProperties().getProperty('ADMIN_KEY');
+          if (adminKey && String(e.parameter.key || '') !== adminKey) {
+            throw new Error('Unauthorized');
+          }
+          result = normalizeResult_(deleteData(String(e.parameter.id || '')));
+          break;
+        }
+
+        default:
+          throw new Error('Invalid action');
+      }
+
+      if (callback) {
+        return jsonpResponse_(callback, result);
+      }
+      return jsonResponse_(result);
+    } catch (error) {
+      const errorPayload = { status: 'error', message: error.message };
+      if (e && e.parameter && e.parameter.callback) {
+        return jsonpResponse_(String(e.parameter.callback), errorPayload);
+      }
+      return jsonResponse_(errorPayload);
+    }
+  }
+
+  return HtmlService.createHtmlOutputFromFile('Index')
+    .setTitle('ระบบรายงานแผนการสื่อสารผู้บริหาร')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function doOptions() {
+  // CORS preflight
+  return corsTextResponse_('');
+}
+
 function doPost(e) {
   try {
-    const data = JSON.parse(e.postData.contents);
-    if (data.action === 'saveData') {
-      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-      const formData = data.formData;
-      
-      const newRow = [
-        formData.id, formData.created_date, formData.recorder_name, formData.recorder_surname,
-        formData.recorder_position, formData.recorder_affiliation, formData.recorder_department,
-        formData.recorder_phone, formData.recorder_email, formData.communication_month,
-        formData.executive_name, formData.executive_surname, formData.executive_position,
-        formData.executive_affiliation, formData.executive_department,
-        formData.communication_topics_json, formData.problems_obstacles, formData.executive_suggestions
-      ];
-      
-      sheet.appendRow(newRow);
-      return ContentService.createTextOutput(JSON.stringify({ status: 'success' })).setMimeType(ContentService.MimeType.JSON);
+    const raw = (e && e.postData && e.postData.contents) || '{}';
+    const request = JSON.parse(raw);
+    const action = request.action;
+    const payload = request.payload || {};
+
+    if (!action) {
+      throw new Error('Missing action');
     }
+
+    return jsonResponse_(routeAction_(action, payload));
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: error.toString() })).setMimeType(ContentService.MimeType.JSON);
+    return jsonResponse_({
+      status: 'error',
+      message: error.message,
+    });
   }
 }
 
-// ฟังก์ชันส่งข้อมูลกลับไปให้ GitHub (โหลดสายงาน และ ตารางข้อมูล)
-function doGet(e) {
-  const action = e.parameter.action;
-  
-  if (action === 'getDepartmentData') {
-    // ดึงข้อมูลสายงานจากชีต Config
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Config"); // ต้องมีชีตชื่อ Config
-    if(!sheet) return ContentService.createTextOutput(JSON.stringify({ error: "ไม่พบชีต Config" })).setMimeType(ContentService.MimeType.JSON);
-    
-    const data = sheet.getDataRange().getValues();
-    const deptData = {};
-    data.forEach(row => { 
-      if(row[0]) deptData[row[0]] = row.slice(1).filter(String); 
-    });
-    return ContentService.createTextOutput(JSON.stringify(deptData)).setMimeType(ContentService.MimeType.JSON);
-    
-  } else if (action === 'getSheetData') {
-    // ดึงข้อมูลตารางทั้งหมด
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-    if(!sheet) return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "ไม่พบชีต data" })).setMimeType(ContentService.MimeType.JSON);
-    
-    const values = sheet.getDataRange().getDisplayValues();
-    return ContentService.createTextOutput(JSON.stringify({ status: 'success', data: values.slice(1) })).setMimeType(ContentService.MimeType.JSON);
+function routeAction_(action, payload) {
+  switch (action) {
+    case 'getDepartmentData':
+      return {
+        status: 'success',
+        data: getDepartmentData(),
+      };
+
+    case 'getSheetData':
+      return normalizeResult_(getSheetData());
+
+    case 'getRecordById':
+      return normalizeResult_(getRecordById(payload.id));
+
+    case 'saveData':
+      return normalizeResult_(saveData(payload.formData));
+
+    case 'updateData':
+      return normalizeResult_(updateData(payload.formData));
+
+    case 'deleteData':
+      return normalizeResult_(deleteData(payload.id));
+
+    case 'uploadFiles':
+      return normalizeResult_(uploadFiles(payload.filesArray || []));
+
+    case 'generatePdfForRecordId':
+      return normalizeResult_(
+        generatePdfForRecordId(payload.recordId, payload.fileName)
+      );
+
+    default:
+      throw new Error('Unknown action: ' + action);
   }
-  
-  return ContentService.createTextOutput("API is running").setMimeType(ContentService.MimeType.JSON);
+}
+
+function saveData(formData) {
+  try {
+    const sheet = getDataSheet_();
+    ensureDataSheetHeaders_(sheet);
+
+    const normalizedData = normalizeFormData_(formData);
+    // Avoid bloating the Sheet with embedded image base64; keep them only for PDF generation.
+    const normalizedForSheet = Object.assign({}, normalizedData);
+    normalizedForSheet.communication_topics_json = stripEvidenceBase64FromTopicsJson_(
+      normalizedData.communication_topics_json
+    );
+    normalizedForSheet.evidence_links = buildEvidenceLinksText_(
+      normalizedForSheet.communication_topics_json
+    );
+    sheet.appendRow(buildRowFromFormData_(normalizedForSheet));
+
+    let pdfUrl = '';
+    const pdfBlob = generatePdfBlob(normalizedData);
+    if (pdfBlob) {
+      const folder = getOrCreateFolder(PDF_FOLDER_NAME);
+      const fileName =
+        '[รายงาน] ' +
+        normalizedData.communication_month +
+        ' - ' +
+        normalizedData.executive_name +
+        ' ' +
+        normalizedData.executive_surname +
+        '.pdf';
+      pdfBlob.setName(fileName);
+      const pdfFile = folder.createFile(pdfBlob);
+      pdfUrl = pdfFile.getUrl();
+    }
+
+    sendConfirmationEmail(normalizedData, pdfBlob, pdfUrl);
+
+    return JSON.stringify({
+      status: 'success',
+      pdfUrl: pdfUrl,
+    });
+  } catch (error) {
+    Logger.log(error);
+    return JSON.stringify({
+      status: 'error',
+      message: error.message,
+    });
+  }
+}
+
+function getSheetData() {
+  try {
+    const sheet = getDataSheet_();
+    ensureDataSheetHeaders_(sheet);
+
+    if (sheet.getLastRow() <= 1) {
+      return JSON.stringify({
+        status: 'success',
+        data: [],
+        headers: DATA_HEADERS,
+      });
+    }
+
+    const range = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn());
+    const values = range.getDisplayValues();
+
+    return JSON.stringify({
+      status: 'success',
+      data: values.slice(1),
+      headers: values[0],
+    });
+  } catch (error) {
+    Logger.log(error);
+    return JSON.stringify({
+      status: 'error',
+      message: error.message,
+    });
+  }
+}
+
+function getRecordById(id) {
+  try {
+    const sheet = getDataSheet_();
+    ensureDataSheetHeaders_(sheet);
+
+    const rowIndex = findRowById(sheet, id);
+    if (rowIndex === -1) {
+      throw new Error('ไม่พบข้อมูล (ID: ' + id + ')');
+    }
+
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const rowValues = sheet
+      .getRange(rowIndex, 1, 1, sheet.getLastColumn())
+      .getDisplayValues()[0];
+    const record = {};
+
+    headers.forEach(function(header, index) {
+      record[header] = rowValues[index];
+    });
+
+    return JSON.stringify({
+      status: 'success',
+      data: record,
+    });
+  } catch (error) {
+    Logger.log(error);
+    return JSON.stringify({
+      status: 'error',
+      message: error.message,
+    });
+  }
+}
+
+function updateData(formData) {
+  try {
+    const sheet = getDataSheet_();
+    ensureDataSheetHeaders_(sheet);
+
+    const normalizedData = normalizeFormData_(formData);
+    const rowIndex = findRowById(sheet, normalizedData.id);
+    if (rowIndex === -1) {
+      throw new Error('ไม่พบข้อมูลที่ต้องการอัปเดต (ID: ' + normalizedData.id + ')');
+    }
+
+    sheet
+      .getRange(rowIndex, 1, 1, DATA_HEADERS.length)
+      .setValues([buildRowFromFormData_(normalizedData)]);
+
+    return JSON.stringify({
+      status: 'success',
+      message: 'อัปเดตข้อมูลเรียบร้อยแล้ว',
+    });
+  } catch (error) {
+    Logger.log(error);
+    return JSON.stringify({
+      status: 'error',
+      message: error.message,
+    });
+  }
+}
+
+function deleteData(id) {
+  try {
+    const sheet = getDataSheet_();
+    ensureDataSheetHeaders_(sheet);
+
+    const rowIndex = findRowById(sheet, id);
+    if (rowIndex === -1) {
+      throw new Error('ไม่พบข้อมูลที่ต้องการลบ (ID: ' + id + ')');
+    }
+
+    sheet.deleteRow(rowIndex);
+
+    return JSON.stringify({
+      status: 'success',
+      message: 'ลบข้อมูลเรียบร้อยแล้ว',
+      id: id,
+    });
+  } catch (error) {
+    Logger.log(error);
+    return JSON.stringify({
+      status: 'error',
+      message: error.message,
+    });
+  }
+}
+
+function generatePdfForRecordId(recordId, fileName) {
+  try {
+    const recordResult = JSON.parse(getRecordById(recordId));
+    if (recordResult.status !== 'success') {
+      throw new Error(recordResult.message || 'ไม่พบข้อมูล');
+    }
+
+    const formData = normalizeFormData_(recordResult.data);
+    const pdfBlob = generatePdfBlob(formData);
+    if (!pdfBlob) {
+      throw new Error('ไม่สามารถสร้าง PDF ได้');
+    }
+
+    pdfBlob.setName((fileName || 'communication-report') + '.pdf');
+    const folder = getOrCreateFolder(PDF_FOLDER_NAME);
+    const pdfFile = folder.createFile(pdfBlob);
+
+    return JSON.stringify({
+      status: 'success',
+      url: pdfFile.getUrl(),
+    });
+  } catch (error) {
+    Logger.log(error);
+    return JSON.stringify({
+      status: 'error',
+      message: error.message,
+    });
+  }
+}
+
+function uploadFiles(filesArray) {
+  try {
+    const folder = getOrCreateFolder(EVIDENCE_FOLDER_NAME);
+    const urls = [];
+
+    filesArray.forEach(function(fileObject) {
+      if (!fileObject || !fileObject.data || !fileObject.filename) {
+        return;
+      }
+
+      const mimeType = fileObject.data.substring(5, fileObject.data.indexOf(';'));
+      const base64Data = fileObject.data.substring(fileObject.data.indexOf(',') + 1);
+      const decodedData = Utilities.base64Decode(base64Data);
+      const blob = Utilities.newBlob(decodedData, mimeType, fileObject.filename);
+      const file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+      urls.push({
+        topicIndex: fileObject.topicIndex,
+        id: file.getId(),
+        url: file.getUrl(),
+        name: file.getName(),
+        type: mimeType,
+        // Only embed base64 for images (for PDF thumbnail rendering).
+        base64: mimeType && mimeType.indexOf('image/') === 0
+          ? 'data:' + mimeType + ';base64,' + base64Data
+          : '',
+      });
+    });
+
+    return JSON.stringify({
+      status: 'success',
+      urls: urls,
+    });
+  } catch (error) {
+    Logger.log(error);
+    return JSON.stringify({
+      status: 'error',
+      message: error.message,
+    });
+  }
+}
+
+function sendConfirmationEmail(data, pdfAttachment, pdfUrl) {
+  try {
+    if (!data.recorder_email) {
+      return;
+    }
+
+    const recipientName =
+      (data.recorder_name || '') +
+      ' ' +
+      (data.recorder_surname || '');
+    const executiveName =
+      (data.executive_name || '') +
+      ' ' +
+      (data.executive_surname || '');
+    const subject =
+      'ยืนยันการส่งรายงานการสื่อสาร - ' +
+      (data.communication_month || '-') +
+      ' - ' +
+      executiveName;
+
+    let body =
+      'สวัสดีคุณ ' +
+      recipientName +
+      '\n\n' +
+      'ระบบได้รับข้อมูลรายงานการสื่อสารเรียบร้อยแล้ว\n\n' +
+      'รายละเอียดโดยย่อ\n' +
+      '- ผู้บริหาร: ' +
+      executiveName +
+      '\n' +
+      '- เดือนที่สื่อสาร: ' +
+      (data.communication_month || '-') +
+      '\n' +
+      '- วันที่บันทึก: ' +
+      (data.created_date || '-') +
+      '\n';
+
+    if (pdfUrl) {
+      body += '- ลิงก์ PDF: ' + pdfUrl + '\n';
+    }
+
+    const attachments = [];
+    let attachmentsBytes = 0;
+    const MAX_EMAIL_ATTACH_BYTES = 20 * 1024 * 1024; // keep margin under Gmail's 25MB limit
+
+    if (pdfAttachment) {
+      try {
+        const pdfBytes = pdfAttachment.getBytes();
+        attachmentsBytes += pdfBytes.length;
+        attachments.push(pdfAttachment);
+      } catch (error) {
+        Logger.log('Failed to attach PDF: ' + error.message);
+      }
+    }
+
+    const topics = parseTopicsJson_(data.communication_topics_json);
+    const skippedLinks = [];
+    topics.forEach(function(topic) {
+      const evidenceFiles = (topic && topic.evidenceFiles) || [];
+      if (!Array.isArray(evidenceFiles) || evidenceFiles.length === 0) return;
+
+      evidenceFiles.forEach(function(file) {
+        if (!file) return;
+        const fileId = file.id;
+        const url = file.url || '';
+        const name = file.name || (url ? url : 'หลักฐาน');
+
+        if (!fileId) {
+          if (url) skippedLinks.push(name + ' - ' + url);
+          return;
+        }
+
+        try {
+          const driveFile = DriveApp.getFileById(fileId);
+          const size = driveFile.getSize();
+          if (attachmentsBytes + size > MAX_EMAIL_ATTACH_BYTES) {
+            if (url) skippedLinks.push(name + ' - ' + url);
+            return;
+          }
+          attachmentsBytes += size;
+          const blob = driveFile.getBlob().setName(name);
+          attachments.push(blob);
+        } catch (error) {
+          Logger.log('Failed to attach evidence file: ' + error.message);
+          if (url) skippedLinks.push(name + ' - ' + url);
+        }
+      });
+    });
+
+    if (attachments.length > (pdfAttachment ? 1 : 0)) {
+      body +=
+        '- แนบไฟล์หลักฐาน: ' +
+        (attachments.length - (pdfAttachment ? 1 : 0)) +
+        ' ไฟล์\n';
+    }
+    if (skippedLinks.length) {
+      body += '\nไฟล์หลักฐานที่แนบไม่ได้ (ขนาดรวมเกินกำหนด/ไม่พบไฟล์) กรุณาเปิดจากลิงก์:\n';
+      body += skippedLinks.join('\n') + '\n';
+    }
+
+    body += '\nอีเมลฉบับนี้ส่งโดยระบบอัตโนมัติ';
+
+    const mailOptions = {
+      to: data.recorder_email,
+      subject: subject,
+      body: body,
+    };
+
+    if (attachments.length) {
+      mailOptions.attachments = attachments;
+    }
+
+    MailApp.sendEmail(mailOptions);
+  } catch (error) {
+    Logger.log('Failed to send email: ' + error.message);
+  }
+}
+
+function generatePdfBlob(formData) {
+  try {
+    const template = HtmlService.createTemplateFromFile('PdfTemplate');
+    template.formData = formData;
+    const html = template.evaluate().getContent();
+
+    return Utilities.newBlob(html, 'text/html', 'report.html')
+      .getAs('application/pdf')
+      .setName('Report-' + (formData.id || 'record') + '.pdf');
+  } catch (error) {
+    Logger.log('Error in generatePdfBlob: ' + error.message);
+    return null;
+  }
+}
+
+function getDepartmentData() {
+  const sheet = getConfigSheet_();
+  const rows = sheet.getDataRange().getValues();
+  const departmentData = {};
+
+  rows.forEach(function(row) {
+    if (!row[0]) {
+      return;
+    }
+    departmentData[row[0]] = row.slice(1).filter(String);
+  });
+
+  return departmentData;
+}
+
+function getOrCreateFolder(folderName) {
+  const folders = DriveApp.getFoldersByName(folderName);
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+  return DriveApp.createFolder(folderName);
+}
+
+function findRowById(sheet, id) {
+  if (sheet.getLastRow() < 2) {
+    return -1;
+  }
+
+  const values = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+  for (let i = 0; i < values.length; i += 1) {
+    if (String(values[i][0]) === String(id)) {
+      return i + 2;
+    }
+  }
+  return -1;
+}
+
+function normalizeFormData_(formData) {
+  const data = formData || {};
+  const normalized = {};
+
+  DATA_HEADERS.forEach(function(header) {
+    normalized[header] = data[header] || '';
+  });
+
+  if (!normalized.id) {
+    normalized.id =
+      'rec_' +
+      new Date().getTime() +
+      '_' +
+      Math.random().toString(36).slice(2, 7);
+  }
+
+  if (!normalized.created_date) {
+    normalized.created_date = Utilities.formatDate(
+      new Date(),
+      Session.getScriptTimeZone(),
+      'dd/MM/yyyy HH:mm:ss'
+    );
+  }
+
+  if (!normalized.communication_topics_json) {
+    normalized.communication_topics_json = '[]';
+  }
+
+  if (!normalized.evidence_links) {
+    normalized.evidence_links = buildEvidenceLinksText_(normalized.communication_topics_json);
+  }
+
+  return normalized;
+}
+
+function buildRowFromFormData_(formData) {
+  return DATA_HEADERS.map(function(header) {
+    return formData[header] || '';
+  });
+}
+
+function getDataSheet_() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    throw new Error('ไม่พบชีต "' + SHEET_NAME + '"');
+  }
+  return sheet;
+}
+
+function getConfigSheet_() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG_SHEET_NAME);
+  if (!sheet) {
+    throw new Error('ไม่พบชีต "' + CONFIG_SHEET_NAME + '"');
+  }
+  return sheet;
+}
+
+function ensureDataSheetHeaders_(sheet) {
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, DATA_HEADERS.length).setValues([DATA_HEADERS]);
+    return;
+  }
+
+  const currentLastColumn = sheet.getLastColumn();
+  if (currentLastColumn < DATA_HEADERS.length) {
+    sheet.insertColumnsAfter(currentLastColumn, DATA_HEADERS.length - currentLastColumn);
+
+    if (sheet.getLastRow() > 1) {
+      const missingColumns = DATA_HEADERS.length - currentLastColumn;
+      const blankRow = new Array(missingColumns).fill('');
+      const blanks = [];
+      for (let i = 0; i < sheet.getLastRow() - 1; i += 1) {
+        blanks.push(blankRow.slice());
+      }
+      sheet
+        .getRange(2, currentLastColumn + 1, sheet.getLastRow() - 1, missingColumns)
+        .setValues(blanks);
+    }
+  }
+
+  const existingHeaders = sheet.getRange(1, 1, 1, DATA_HEADERS.length).getValues()[0];
+  const needsUpdate = DATA_HEADERS.some(function(header, index) {
+    return existingHeaders[index] !== header;
+  });
+
+  if (needsUpdate) {
+    sheet.getRange(1, 1, 1, DATA_HEADERS.length).setValues([DATA_HEADERS]);
+  }
+}
+
+function parseTopicsJson_(rawJson) {
+  try {
+    const parsed = JSON.parse(rawJson || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    Logger.log('Invalid communication_topics_json: ' + error.message);
+    return [];
+  }
+}
+
+function stripEvidenceBase64FromTopicsJson_(rawJson) {
+  const topics = parseTopicsJson_(rawJson);
+  const sanitized = topics.map(function(topic) {
+    const cloned = Object.assign({}, topic);
+    if (Array.isArray(cloned.evidenceFiles)) {
+      cloned.evidenceFiles = cloned.evidenceFiles.map(function(file) {
+        if (!file) return file;
+        const out = { name: file.name || '', url: file.url || '' };
+        if (file.id) out.id = file.id;
+        // Keep type if present (small), drop base64 always.
+        if (file.type) out.type = file.type;
+        return out;
+      });
+    }
+    return cloned;
+  });
+  return JSON.stringify(sanitized);
+}
+
+function buildEvidenceLinksText_(topicsJson) {
+  const topics = parseTopicsJson_(topicsJson);
+  const rows = [];
+
+  topics.forEach(function(topic, index) {
+    const evidenceFiles = (topic && topic.evidenceFiles) || [];
+    if (!Array.isArray(evidenceFiles) || evidenceFiles.length === 0) {
+      return;
+    }
+
+    evidenceFiles.forEach(function(file, fileIndex) {
+      const name =
+        (file && file.name) ||
+        'หลักฐาน ' + (index + 1) + '.' + (fileIndex + 1);
+      const url = (file && file.url) || '';
+      if (url) {
+        rows.push(name + ' - ' + url);
+      }
+    });
+  });
+
+  return rows.length ? rows.join('\n') : '-';
+}
+
+function renderEvidenceLinksHtml_(evidenceFiles) {
+  if (!Array.isArray(evidenceFiles) || evidenceFiles.length === 0) {
+    return '-';
+  }
+
+  return evidenceFiles.map(function(file, index) {
+    const name = escapeHtml_((file && file.name) || ('ลิงก์หลักฐาน ' + (index + 1)));
+    const url = escapeHtml_((file && file.url) || '');
+
+    if (!url) {
+      return '<div class="evidence-item">' + name + '</div>';
+    }
+
+    return (
+      '<div class="evidence-item">' +
+      '<a href="' + url + '" target="_blank">' + name + '</a>' +
+      '<div class="evidence-url">' + url + '</div>' +
+      '</div>'
+    );
+  }).join('');
+}
+
+function escapeHtml_(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function normalizeResult_(value) {
+  if (typeof value === 'string') {
+    return JSON.parse(value);
+  }
+  return value;
+}
+
+function jsonResponse_(data) {
+  return corsTextResponse_(JSON.stringify(data)).setMimeType(
+    ContentService.MimeType.JSON
+  );
+}
+
+function jsonpResponse_(callback, data) {
+  const safeCallback = String(callback || '').replace(/[^\w$.]/g, '');
+  const payload = safeCallback + '(' + JSON.stringify(data) + ');';
+  return corsTextResponse_(payload).setMimeType(
+    ContentService.MimeType.JAVASCRIPT
+  );
+}
+
+function corsTextResponse_(text) {
+  return ContentService.createTextOutput(text)
+    .setHeader('Access-Control-Allow-Origin', '*')
+    .setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    .setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    .setHeader('Access-Control-Max-Age', '3600');
 }

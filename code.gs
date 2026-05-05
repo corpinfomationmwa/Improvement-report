@@ -113,56 +113,45 @@ function generatePdfBlob(formData) {
     });
 
     // (ส่วนที่ 3, 4, 5, 6 - โค้ด HTML, CSS, และการสร้าง Blob เหมือนเดิมทุกประการ)
-    const recorderName = `${formData.recorder_name ||
-''} ${formData.recorder_surname || ''}`;
+    const recorderName = `${formData.recorder_name || ''} ${formData.recorder_surname || ''}`;
     const recorderPosition = formData.recorder_position || '...';
     const recorderAffiliation = formData.recorder_affiliation || '...';
     const recorderDepartment = formData.recorder_department || '...';
     const recorderPhone = formData.recorder_phone || '...';
+    
     // ================================================================
     // === 🚀🚀🚀 จุดที่ 1: (แก้ไข) โค้ด CSS (Mitr 18/16/14pt) 🚀🚀🚀 ===
     // ================================================================
     const css = `
       <style>
-        @page { size: A4 landscape;
-          margin: 0.75in; }
+        @page { size: A4 landscape; margin: 0.75in; }
         
-        /* --- 1. (แก้ไข) Font หลักเป็น Mitr (Sans-serif) 16pt --- */
         body { 
-          font-family: 'Mitr', sans-serif; // ⚠️ แก้ไขที่นี่
+          font-family: 'Mitr', sans-serif;
           font-size: 16pt;
           line-height: 1.4;
           font-weight: normal;
         }
-        
-        /* --- 2. H2, H3 (18pt Bold) --- */
         h2, h3 {
           font-size: 18pt;
           font-weight: bold;
           text-align: center;
           margin: 0 0 5px 0;
         }
-        h3 { 
-          /* (แก้ไข) H3 18pt Bold (ตามคำสั่งแรก) */
-          margin: 0 0 15px 0;
-        }
+        h3 { margin: 0 0 15px 0; }
         
-        /* --- 3. บรรทัดผู้จัดทำ (16pt, Bold/Regular) --- */
         .recorder-info {
           font-size: 16pt;
           margin-bottom: 10px;
           line-height: 1.5;
-          word-wrap: break-word; /* กันตกขอบ */
+          word-wrap: break-word;
         }
-        .recorder-info strong {
-          font-weight: bold;
-        }
+        .recorder-info strong { font-weight: bold; }
 
-        /* --- 4. (แก้ไข) ตาราง (14pt) --- */
         .print-table { 
           width: 100%;
           border-collapse: collapse;
-          font-size: 14pt; /* 🚀 14pt ตามที่เราตกลงกัน 🚀 */
+          font-size: 14pt;
           table-layout: fixed;
           margin-top: 15px;
         }
@@ -178,31 +167,25 @@ function generatePdfBlob(formData) {
           text-align: center;
           font-weight: bold;
         }
-        .print-table img { width: 80px !important;
-          height: 80px !important; object-fit: cover; }
+        .print-table img { width: 80px !important; height: 80px !important; object-fit: cover; }
         .print-table p.topic-detail-text {
           font-size: 12pt;
-          /* (รายละเอียดในตาราง) */
           white-space: pre-wrap;
           margin: 0;
           padding: 0;
         }
 
-        /* --- 5. (ใหม่) ปัญหา/ข้อเสนอแนะ (Layout ต่อท้าย) --- */
         .footer-section {
           font-size: 16pt;
           margin-top: 15px;
         }
-        .footer-section strong {
-          font-weight: bold;
-        }
+        .footer-section strong { font-weight: bold; }
         .footer-section span {
           font-weight: normal;
           white-space: pre-wrap;
           padding-left: 10px;
         }
         
-        /* --- 6. ลายเซ็น (16pt Bold) --- */
         .signature-div {
           width: 100%;
           text-align: right;
@@ -212,30 +195,27 @@ function generatePdfBlob(formData) {
         .signature-div p { 
           margin: 5px 0;
           padding: 0;
-          text-align: center; /* 🚀 (จัดกลางตามคำสั่ง) 🚀 */
+          text-align: center;
           width: 300px;
-          /* (กำหนดความกว้างให้บล็อก) */
           margin-left: auto;
-          /* (ดันไปทางขวา) */
           margin-right: 0;
-          /* (ชิดขวา) */
         }
 
-        /* --- 7. (ใหม่) ส่วนท้ายของ PDF (Footer) --- */
         .pdf-footer {
-          position: fixed; /* ให้อยู่ด้านล่างตลอด (สำหรับ PDF Print) */
+          position: fixed; 
           bottom: 0;
           left: 0;
           width: 100%;
-          background-color: #1976d2; /* สีน้ำเงินเข้ม */
+          background-color: #1976d2; 
           color: #ffffff;
-          padding: 10px 0; /* เว้นด้านบน/ล่าง 10px */
+          padding: 10px 0; 
           text-align: center;
-          font-size: 10pt; /* ขนาดฟอนต์เล็กกว่าปกติ */
+          font-size: 10pt; 
           font-weight: normal;
         }
       </style>
     `;
+    
     // ================================================================
     // === 🚀🚀🚀 จุดที่ 2: (แก้ไข) โค้ด HTML (Layout ต่อท้าย) 🚀🚀🚀 ===
     // ================================================================
@@ -256,7 +236,6 @@ function generatePdfBlob(formData) {
             <th style="width: 15%;">ผู้ถ่ายทอดสาร</th>
             <th style="width: 30%;">ประเด็นการสื่อสาร</th>
             <th style="width: 20%;">ช่องทางการสื่อสาร</th>
-            
             <th style="width: 20%;">ผู้รับสาร</th>
             <th style="width: 15%;">หลักฐาน (ถ้ามี)</th>
           </tr>
@@ -268,34 +247,27 @@ function generatePdfBlob(formData) {
       
       <div class="footer-section">
           <div style="margin-bottom: 5px;">
-        
             <strong>ปัญหาและอุปสรรคในการสื่อสาร:</strong>
-            <span>${formData.problems_obstacles ||
-'-'}</span>
+            <span>${formData.problems_obstacles || '-'}</span>
           </div>
           <div>
             <strong>ข้อเสนอแนะของผู้บริหารในการสื่อสาร:</strong>
-            <span>${formData.executive_suggestions ||
-'-'}</span>
+            <span>${formData.executive_suggestions || '-'}</span>
           </div>
       </div>
       
       <br><br><br>
       
       <div class="signature-div">
-          <p>${formData.executive_name ||
-''} ${formData.executive_surname || ''}</p>
-          <p>${formData.executive_position ||
-'...'}</p>
+          <p>${formData.executive_name || ''} ${formData.executive_surname || ''}</p>
+          <p>${formData.executive_position || '...'}</p>
       </div>
       
       <div class="pdf-footer">
           ส่วนข้อมูลข่าวสารและประเมินผลการสื่อสาร กองบริหารภาพลักษณ์และแผนการสื่อสาร ฝ่ายสื่อสารองค์กร โทร. 1269
       </div>
       `;
-    // ================================================================
-    
-    // 🚀 (แก้ไข) เพิ่มลิงก์ Mitr Google Fonts เข้าไปในส่วน <head>
+      
     const fullHtml = `<!doctype html><html><head>
     <link href="https://fonts.googleapis.com/css?family=Mitr:400,700&display=swap" rel="stylesheet">
     ${css}
@@ -312,12 +284,9 @@ function generatePdfBlob(formData) {
 }
 
 // ===================================================================
-// === (ส่วนที่ 2) ฟังก์ชัน saveData (ไม่แก้ไข) ===
+// === (ส่วนที่ 2) ฟังก์ชัน saveData (เพิ่มการสร้าง Header อัตโนมัติ) ===
 // ===================================================================
 
-/**
- * [saveData] - บันทึกข้อมูลและส่งอีเมล
- */
 function saveData(formData) {
   try {
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
@@ -325,7 +294,20 @@ function saveData(formData) {
       throw new Error(`Sheet name "${SHEET_NAME}" not found. Please create a sheet named "data" (lowercase).`);
     }
 
-    // (โค้ดส่วนนี้เหมือนเดิม)
+    // 🚀 เพิ่มระบบสร้างหัวตารางอัตโนมัติ 🚀
+    // หากเพิ่งเคลียร์ชีตจนว่างเปล่า ระบบจะพิมพ์หัวตารางให้ก่อน 1 บรรทัด
+    if (sheet.getLastRow() === 0) {
+      const headers = [
+        'id', 'created_date', 'recorder_name', 'recorder_surname',
+        'recorder_position', 'recorder_affiliation', 'recorder_department',
+        'recorder_phone', 'recorder_email', 'communication_month',
+        'executive_name', 'executive_surname', 'executive_position',
+        'executive_affiliation', 'executive_department',
+        'communication_topics_json', 'problems_obstacles', 'executive_suggestions'
+      ];
+      sheet.appendRow(headers);
+    }
+
     const newRow = [
       formData.id, formData.created_date, formData.recorder_name, formData.recorder_surname,
       formData.recorder_position, formData.recorder_affiliation, formData.recorder_department,
@@ -336,16 +318,13 @@ function saveData(formData) {
     ];
     sheet.appendRow(newRow);
 
-    // 1. เรียกฟังก์ชัน "ส่วนที่ 1" (generatePdfBlob) เพื่อสร้าง PDF
     const pdfBlob = generatePdfBlob(formData);
-    // 2. บันทึก PDF ลงในโฟลเดอร์ Drive
     const folder = getOrCreateFolder(PDF_FOLDER_NAME);
-    // 3. ตั้งชื่อไฟล์ PDF ที่จะบันทึก
     const fileName = `[รายงาน] ${formData.communication_month} - ${formData.executive_name} ${formData.executive_surname}.pdf`;
     pdfBlob.setName(fileName);
     const pdfFile = folder.createFile(pdfBlob);
     Logger.log(`PDF Report saved to Drive: ${pdfFile.getUrl()}`);
-    // 4. ส่ง "pdfBlob" ไปเป็นพารามิเตอร์ที่ 2 ให้ฟังก์ชัน "ส่วนที่ 3"
+    
     sendConfirmationEmail(formData, pdfBlob);
 
     return JSON.stringify({ status: 'success' });
@@ -356,9 +335,8 @@ function saveData(formData) {
 }
 
 // ===================================================================
-// === (ส่วนที่ 3) ฟังก์ชัน sendConfirmationEmail (ไม่แก้ไข) ===
+// === (ส่วนที่ 3) ฟังก์ชัน sendConfirmationEmail ===
 // ===================================================================
-// (โค้ดส่วนนี้ของคุณสมบูรณ์ดีอยู่แล้ว ไม่ต้องแก้ไขครับ)
 function sendConfirmationEmail(data, pdfAttachment) {
   try {
     const recipientEmail = data.recorder_email;
@@ -392,7 +370,6 @@ function sendConfirmationEmail(data, pdfAttachment) {
     - เดือนที่สื่อสาร: ${communicationMonth}
     - ผู้บันทึก: ${recipientName} (${recipientEmail})
  
-
     ส่วนข้อมูลข่าวสารและประเมินผลการสื่อสาร กองบริหารภาพลักษณ์และแผนการสื่อสาร ฝ่ายสื่อสารองค์กร ขอขอบคุณที่ส่งรายงานการสื่อสารภายในและภายนอกองค์กรสำหรับผู้บริหาร ประจำปีงบประมาณ 2569
     
     (นี่คืออีเมลอัตโนมัติ กรุณาอย่าตอบกลับ)
@@ -401,27 +378,50 @@ function sendConfirmationEmail(data, pdfAttachment) {
       to: recipientEmail,
       subject: subject,
       body: body,
-      attachments: [pdfAttachment] // <-- เพิ่มไฟล์แนบตรงนี้
+      attachments: [pdfAttachment]
     });
   } catch (error) {
     Logger.log('Failed to send email: ' + error.message);
   }
 }
 
-
 // ===================================================================
-// === (ฟังก์ชันเดิมของคุณ - ไม่แก้ไข) ===
+// === 🚀 (ส่วนที่ 4) ฟังก์ชัน getSheetData (แก้ไขให้อ่านข้อมูลแม่นยำขึ้น) 🚀 ===
 // ===================================================================
 function getSheetData() {
     try {
       const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME);
-      if (!sheet || sheet.getLastRow() <= 1) {
+      
+      // ถ้าไม่มีชีต หรือชีตว่างเปล่าสนิท ให้คืนค่าว่างกลับไป
+      if (!sheet || sheet.getLastRow() === 0) {
           return JSON.stringify({ status: 'success', data: [], headers: [] });
       }
+      
       const range = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn());
       const values = range.getDisplayValues();
-      const headers = values[0];
-      const data = values.slice(1);
+      
+      let headers = [];
+      let data = [];
+      
+      // 🚀 ตรวจสอบว่า "แถวที่ 1" ดันเป็นข้อมูล (ID ขึ้นต้นด้วย rec_) หรือไม่
+      // กรณีที่ผู้ใช้เซฟข้อมูลตอนชีตว่างเปล่าและไม่มีหัวตาราง
+      if (values.length > 0 && String(values[0][0]).startsWith('rec_')) {
+         // ถ้าแถวแรกคือข้อมูลทั้งหมด ให้กำหนดหัวตารางจำลองขึ้นมาเอง
+         headers = [
+           'id', 'created_date', 'recorder_name', 'recorder_surname',
+           'recorder_position', 'recorder_affiliation', 'recorder_department',
+           'recorder_phone', 'recorder_email', 'communication_month',
+           'executive_name', 'executive_surname', 'executive_position',
+           'executive_affiliation', 'executive_department',
+           'communication_topics_json', 'problems_obstacles', 'executive_suggestions'
+         ];
+         data = values; // นำข้อมูลทุกแถวไปใช้งานได้เลย
+      } else {
+         // ถ้าแถวแรกเป็น หัวตาราง ปกติ
+         headers = values[0];
+         data = values.slice(1); // ตัดแถวแรกทิ้ง แล้วเอาข้อมูลที่เหลือไปแสดง
+      }
+      
       return JSON.stringify({ status: 'success', data: data, headers: headers });
     } catch (error) {
         Logger.log(error);
@@ -518,35 +518,24 @@ function findRowById(sheet, id) {
 }
 
 // ===================================================================
-// === (🚀 ส่วนที่ 5) ฟังก์ชันสำหรับปุ่ม "ส่งออก PDF" (ปรับปรุง) 🚀 ===
+// === (🚀 ส่วนที่ 5) ฟังก์ชันสำหรับปุ่ม "ส่งออก PDF" ===
 // ===================================================================
-
-/**
- * [🚀 ปรับปรุง 🚀] - เปลี่ยนชื่อจาก createPdfFromHtml เป็น generatePdfForRecordId
- * รับ 'recordId' (แทน htmlContent) เพื่อไปดึงข้อมูลและเรียกใช้
- * 'generatePdfBlob' (ตัวเดียวกับที่ saveData ใช้) เพื่อให้แน่ใจว่า PDF เหมือนกัน
- */
 function generatePdfForRecordId(recordId, fileName) {
   try {
-    // 1. ดึงข้อมูล Record โดยใช้ฟังก์ชันที่คุณมีอยู่แล้ว
     const recordResponse = getRecordById(recordId);
     const recordResult = JSON.parse(recordResponse);
     if (recordResult.status !== 'success') {
       throw new Error('ไม่พบข้อมูล (ID: ' + recordId + ')');
     }
     
-    // 2. (สำคัญ) recordResult.data คืออ็อบเจกต์ (formData) ที่เราต้องการ
     const formData = recordResult.data;
-    // 3. (สำคัญ) เรียกใช้ฟังก์ชัน *ตัวเดียวกับที่ saveData ใช้*
-    // ตอนนี้ PDF จะแสดงรูปภาพได้ถูกต้อง เพราะ generatePdfBlob ถูกแก้ไขแล้ว
     const pdfBlob = generatePdfBlob(formData);
     if (pdfBlob === null) {
       throw new Error("เกิดข้อผิดพลาดในการสร้าง PDF Blob (อาจจะมาจาก generatePdfBlob)");
     }
     
-    pdfBlob.setName(fileName + '.pdf'); // ตั้งชื่อไฟล์
+    pdfBlob.setName(fileName + '.pdf');
 
-    // 4. บันทึกลง Drive และส่ง URL กลับไป
     const folder = getOrCreateFolder(PDF_FOLDER_NAME);
     const pdfFile = folder.createFile(pdfBlob);
     
@@ -559,9 +548,8 @@ function generatePdfForRecordId(recordId, fileName) {
 }
 
 // ===================================================================
-// === 🚀 (ส่วนที่ 6) ฟังก์ชันอัปโหลดไฟล์ (ไม่แก้ไข) 🚀 ===
+// === 🚀 (ส่วนที่ 6) ฟังก์ชันอัปโหลดไฟล์ ===
 // ===================================================================
-// (โค้ดส่วนนี้ของคุณทำงานได้ดี และให้ URL ที่ถูกต้องสำหรับดึง ID แล้ว)
 function uploadFiles(filesArray) {
   try {
     const folder = getOrCreateFolder(EVIDENCE_FOLDER_NAME);
@@ -573,9 +561,7 @@ function uploadFiles(filesArray) {
       const decodedData = Utilities.base64Decode(base64Data, Utilities.Charset.UTF_8);
       const blob = Utilities.newBlob(decodedData, mimeType, fileObject.filename);
       const file = folder.createFile(blob);
-      //file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
       
-      // (URL นี้ถูกต้องแล้ว เราจะใช้ ID จากมันใน generatePdfBlob)
       urls.push({
         topicIndex: fileObject.topicIndex,
         url: 'https://drive.google.com/uc?id=' + file.getId(), 
@@ -599,7 +585,7 @@ function getOrCreateFolder(folderName) {
 }
 
 // ===================================================================
-// === (ฟังก์ชัน Config - ไม่แก้ไข) ===
+// === (ฟังก์ชัน Config) ===
 // ===================================================================
 function getDepartmentData() {
   try {
@@ -626,22 +612,19 @@ function getDepartmentData() {
 // ===================================================================
 // === 🚀 ตัวจัดการ API สำหรับรับ Request จาก GitHub (Frontend) 🚀 ===
 // ===================================================================
-
 function doPost(e) {
   try {
-    // 1. รับข้อมูลที่ส่งมาจาก Frontend
     const request = JSON.parse(e.postData.contents);
     const action = request.action;
     const payload = request.payload;
     
     let result = "";
 
-    // 2. ตรวจสอบว่า Frontend สั่งให้ทำอะไร (Router)
     if (action === "getDepartmentData") {
       result = JSON.stringify({ status: 'success', data: getDepartmentData() });
     } 
     else if (action === "getSheetData") {
-      result = getSheetData(); // ฟังก์ชันเดิมของคุณ return เป็น JSON String อยู่แล้ว
+      result = getSheetData(); 
     } 
     else if (action === "saveData") {
       result = saveData(payload);
@@ -656,7 +639,6 @@ function doPost(e) {
       result = generatePdfForRecordId(payload.recordId, payload.fileName);
     }
 
-    // 3. ส่งข้อมูลกลับไปให้ Frontend
     return ContentService.createTextOutput(result).setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {

@@ -707,7 +707,7 @@
                     </div>
                 </div>
             </form>
-            <div id="loading" class="loading"><p>กำลังบันทึกข้อมูล...</p></div>
+            <div id="loading" class="loading"><p id="loading-text">กำลังบันทึกข้อมูล...</p></div>
             
             </div>
 
@@ -917,19 +917,68 @@
         // ===================================================================
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxDONaSaN4iOflVm-ojgYYtt6dVekP_qxbOP41DyjP19pbM7-GrD_5Wh8dU5x_A2pUr5g/exec";
 
-        async function callGAS(action, payload = null) {
+        // 🚀 ตั้งค่า timeout และ retry สำหรับการเรียก Apps Script
+        const GAS_TIMEOUT_MS = 30000; // 30 วินาทีต่อ 1 ครั้ง
+        const GAS_MAX_RETRIES = 3;
+        const GAS_RETRY_BASE_DELAY_MS = 1500; // หน่วงเวลาก่อน retry ครั้งถัดไป (exponential backoff)
+
+        function delay(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function callGASOnce(action, payload, timeoutMs) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
             try {
                 const response = await fetch(GAS_API_URL, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: action, payload: payload }),
-                    redirect: "follow"
+                    redirect: "follow",
+                    signal: controller.signal
                 });
+
+                if (!response.ok) {
+                    throw new Error(`เซิร์ฟเวอร์ตอบกลับผิดพลาด (HTTP ${response.status})`);
+                }
+
                 return await response.text();
             } catch (error) {
-                console.error("Fetch Error:", error);
+                if (error.name === 'AbortError') {
+                    throw new Error(`หมดเวลาการเชื่อมต่อ (เกิน ${timeoutMs / 1000} วินาที) - เซิร์ฟเวอร์อาจกำลังทำงานหนักหรือมีคนใช้งานพร้อมกันจำนวนมาก`);
+                }
                 throw error;
+            } finally {
+                clearTimeout(timeoutId);
             }
+        }
+
+        // callGAS: เรียก Apps Script พร้อม timeout และ retry อัตโนมัติ
+        // options: { timeoutMs, maxRetries, onRetry(attempt, maxRetries, error) }
+        async function callGAS(action, payload = null, options = {}) {
+            const timeoutMs = options.timeoutMs || GAS_TIMEOUT_MS;
+            const maxRetries = (options.maxRetries !== undefined) ? options.maxRetries : GAS_MAX_RETRIES;
+            let lastError;
+
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    return await callGASOnce(action, payload, timeoutMs);
+                } catch (error) {
+                    lastError = error;
+                    console.error(`callGAS "${action}" ล้มเหลว (ครั้งที่ ${attempt}/${maxRetries}):`, error);
+
+                    if (attempt < maxRetries) {
+                        if (typeof options.onRetry === 'function') {
+                            options.onRetry(attempt, maxRetries, error);
+                        }
+                        const backoff = GAS_RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+                        await delay(backoff);
+                    }
+                }
+            }
+
+            throw lastError;
         }
 
         let currentStep = 1;
@@ -964,8 +1013,27 @@
             "การยกระดับบุคลากรสู่ความเป็นเลิศในการปฏิบัติงาน"
         ];
         
+        // 🚀 ขนาดไฟล์สูงสุดต่อไฟล์ (bytes) - ปรับได้ตามต้องการ
+        const MAX_FILE_SIZE_MB = 2;
+        const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+        // ขนาดสูงสุดของภาพหลังบีบอัด (พิกเซล ด้านที่ยาวที่สุด)
+        const MAX_IMAGE_DIMENSION = 1600;
+        // คุณภาพ JPEG หลังบีบอัด (0-1)
+        const IMAGE_COMPRESSION_QUALITY = 0.7;
+
+        function formatFileSize(bytes) {
+            if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+            if (bytes >= 1024) return (bytes / 1024).toFixed(0) + ' KB';
+            return bytes + ' B';
+        }
+
+        function isImageFile(file) {
+            return file.type && file.type.startsWith('image/');
+        }
+
         function validateFileCount(event, maxFiles) {
             const input = event.target;
+
             if (input.files.length > maxFiles) {
                 Swal.fire({
                     title: 'ไฟล์เกินกำหนด',
@@ -973,7 +1041,43 @@
                     icon: 'warning',
                     confirmButtonText: 'ตกลง'
                 });
-                input.value = ''; 
+                input.value = '';
+                return;
+            }
+
+            // 🚀 เช็คขนาดไฟล์ - ไฟล์ที่ไม่ใช่รูปภาพ (pdf/doc) จะไม่ถูกบีบอัด จึงต้องเตือนถ้าใหญ่เกินไป
+            const oversizedNonImageFiles = Array.from(input.files).filter(
+                f => !isImageFile(f) && f.size > MAX_FILE_SIZE_BYTES
+            );
+
+            if (oversizedNonImageFiles.length > 0) {
+                const fileList = oversizedNonImageFiles
+                    .map(f => `- ${f.name} (${formatFileSize(f.size)})`)
+                    .join('\n');
+                Swal.fire({
+                    title: 'ไฟล์มีขนาดใหญ่เกินไป',
+                    text: `ไฟล์ต่อไปนี้มีขนาดเกิน ${MAX_FILE_SIZE_MB} MB กรุณาลดขนาดไฟล์ก่อนแนบ (รองรับการบีบอัดอัตโนมัติเฉพาะไฟล์รูปภาพ):\n${fileList}`,
+                    icon: 'error',
+                    confirmButtonText: 'ตกลง'
+                });
+                input.value = '';
+                return;
+            }
+
+            // แจ้งเตือนรูปภาพขนาดใหญ่ว่าจะถูกบีบอัดอัตโนมัติตอนอัปโหลด (ไม่บล็อกการเลือกไฟล์)
+            const largeImages = Array.from(input.files).filter(
+                f => isImageFile(f) && f.size > MAX_FILE_SIZE_BYTES
+            );
+            if (largeImages.length > 0) {
+                Swal.fire({
+                    title: 'รูปภาพจะถูกย่อขนาดอัตโนมัติ',
+                    text: `พบรูปภาพขนาดใหญ่ ${largeImages.length} ไฟล์ ระบบจะย่อขนาดให้อัตโนมัติก่อนอัปโหลดเพื่อความรวดเร็ว`,
+                    icon: 'info',
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 3000
+                });
             }
         }
 
@@ -986,6 +1090,59 @@
             });
         }
 
+        // 🚀 บีบอัด/ย่อขนาดรูปภาพผ่าน canvas ก่อนแปลงเป็น base64
+        // ไฟล์ที่ไม่ใช่รูปภาพ (pdf, doc, docx) จะถูกส่งคืนตามเดิมโดยไม่ผ่านการบีบอัด
+        function compressImageFile(file) {
+            return new Promise((resolve, reject) => {
+                if (!isImageFile(file)) {
+                    // ไม่ใช่รูปภาพ - อ่านตามปกติ ไม่บีบอัด
+                    readFileAsBase64(file).then(resolve).catch(reject);
+                    return;
+                }
+
+                const img = new Image();
+                const objectUrl = URL.createObjectURL(file);
+
+                img.onload = () => {
+                    URL.revokeObjectURL(objectUrl);
+
+                    let { width, height } = img;
+                    if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+                        if (width >= height) {
+                            height = Math.round(height * (MAX_IMAGE_DIMENSION / width));
+                            width = MAX_IMAGE_DIMENSION;
+                        } else {
+                            width = Math.round(width * (MAX_IMAGE_DIMENSION / height));
+                            height = MAX_IMAGE_DIMENSION;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // ใช้ JPEG เสมอสำหรับการบีบอัด (คุณภาพดี ขนาดเล็ก) ยกเว้น GIF ที่คง format เดิมไว้
+                    const outputType = file.type === 'image/gif' ? 'image/gif' : 'image/jpeg';
+                    const dataUrl = canvas.toDataURL(outputType, IMAGE_COMPRESSION_QUALITY);
+                    resolve(dataUrl);
+                };
+
+                img.onerror = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    // ถ้าอ่านเป็นรูปไม่สำเร็จ ให้ fallback ไปอ่านแบบปกติ
+                    readFileAsBase64(file).then(resolve).catch(reject);
+                };
+
+                img.src = objectUrl;
+            });
+        }
+
+        // 🚀 อัปโหลดไฟล์ทีละไฟล์ (แทนการยิงรวมเป็นก้อนเดียว)
+        // ข้อดี: (1) payload แต่ละครั้งเล็กลงมาก ไม่ชน limit ของ Apps Script
+        // (2) ถ้าไฟล์ใดไฟล์หนึ่งมีปัญหา ไฟล์อื่นยังอัปโหลดสำเร็จได้ ไม่ล้มทั้งหมด
+        // (3) แสดง progress ให้ผู้ใช้เห็นว่าอัปโหลดไปถึงไฟล์ไหนแล้ว
         async function uploadEvidenceFiles() {
             console.log("Starting file uploads...");
             const filesToUpload = [];
@@ -993,11 +1150,11 @@
 
             for (const input of fileInputs) {
                 if (input.files.length > 0) {
-                    const topicIndex = parseInt(input.id.split('-').pop()); 
+                    const topicIndex = parseInt(input.id.split('-').pop());
                     for (const file of input.files) {
                         filesToUpload.push({
                             file: file,
-                            topicIndex: topicIndex 
+                            topicIndex: topicIndex
                         });
                     }
                 }
@@ -1005,40 +1162,65 @@
 
             if (filesToUpload.length === 0) {
                 console.log("No files to upload.");
-                return []; 
+                return [];
             }
 
-            const fileDataPromises = filesToUpload.map(async (fileObj) => {
+            const totalFiles = filesToUpload.length;
+            const uploadedUrls = [];
+            const failedFiles = [];
+
+            for (let i = 0; i < filesToUpload.length; i++) {
+                const fileObj = filesToUpload[i];
+                const fileNumber = i + 1;
+
+                showLoading(true, `กำลังอัปโหลดไฟล์ ${fileNumber}/${totalFiles}: ${fileObj.file.name}`);
+
                 try {
-                    const base64Data = await readFileAsBase64(fileObj.file);
-                    return {
+                    // ย่อขนาดรูปภาพก่อนแปลง base64 (ไฟล์ที่ไม่ใช่รูปจะอ่านตามปกติ)
+                    const base64Data = await compressImageFile(fileObj.file);
+
+                    const singleFilePayload = [{
                         filename: fileObj.file.name,
                         data: base64Data,
                         topicIndex: fileObj.topicIndex
-                    };
-                } catch (error) {
-                    console.error("Error reading file:", fileObj.file.name, error);
-                    return null;
-                }
-            });
+                    }];
 
-            const fileDataArray = (await Promise.all(fileDataPromises)).filter(f => f !== null);
+                    const response = await callGAS("uploadFiles", singleFilePayload, {
+                        onRetry: (attempt, maxRetries) => {
+                            showLoading(true, `ไฟล์ ${fileNumber}/${totalFiles} ช้า กำลังลองใหม่ (${attempt}/${maxRetries - 1}): ${fileObj.file.name}`);
+                        }
+                    });
 
-            // 🚀 แก้ไข: เรียกผ่าน API แทน
-            return new Promise(async (resolve, reject) => {
-                try {
-                    const response = await callGAS("uploadFiles", fileDataArray);
                     const result = JSON.parse(response);
-                    if (result.status === 'success') {
-                        console.log("Upload success:", result.urls);
-                        resolve(result.urls); 
+                    if (result.status === 'success' && result.urls && result.urls.length > 0) {
+                        uploadedUrls.push(...result.urls);
                     } else {
-                        reject(new Error(result.message));
+                        throw new Error(result.message || 'อัปโหลดไม่สำเร็จ');
                     }
-                } catch (e) {
-                    reject(e);
+                } catch (error) {
+                    console.error(`Error uploading file "${fileObj.file.name}":`, error);
+                    failedFiles.push({ name: fileObj.file.name, error: error.message || String(error) });
                 }
-            });
+            }
+
+            if (failedFiles.length > 0) {
+                const failedList = failedFiles.map(f => `- ${f.name}: ${f.error}`).join('\n');
+                // แจ้งเตือนแต่ไม่บล็อกการบันทึกข้อมูลหลัก - ให้ผู้ใช้ตัดสินใจว่าจะดำเนินการต่อหรือยกเลิก
+                const proceedResult = await Swal.fire({
+                    title: `อัปโหลดไม่สำเร็จ ${failedFiles.length}/${totalFiles} ไฟล์`,
+                    text: `ไฟล์ต่อไปนี้อัปโหลดไม่สำเร็จ:\n${failedList}\n\nต้องการบันทึกข้อมูลต่อโดยไม่มีไฟล์เหล่านี้หรือไม่?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'บันทึกต่อ (ไม่รวมไฟล์ที่ผิดพลาด)',
+                    cancelButtonText: 'ยกเลิก'
+                });
+
+                if (!proceedResult.isConfirmed) {
+                    throw new Error('ยกเลิกการบันทึกข้อมูล เนื่องจากมีไฟล์อัปโหลดไม่สำเร็จ');
+                }
+            }
+
+            return uploadedUrls;
         }
 
         function fetchAndRenderData() {
@@ -1313,46 +1495,30 @@
                 if (!validateFinalSubmission()) {
                     return;
                 }
-                showLoading(true);
-                Swal.fire({
-                    title: 'กำลังอัปโหลดไฟล์...',
-                    text: 'กรุณารอสักครู่',
-                    icon: 'info',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 3000,
-                    timerProgressBar: true
-                });
+                showLoading(true, 'กำลังเตรียมไฟล์แนบ...');
 
+                // อัปโหลดไฟล์ทีละไฟล์ - showLoading จะอัปเดต progress ระหว่างทางเอง (ดู uploadEvidenceFiles)
                 const fileUrls = await uploadEvidenceFiles();
 
-                Swal.fire({
-                    title: 'อัปโหลดไฟล์เรียบร้อย!',
-                    text: 'กำลังบันทึกข้อมูลหลัก...',
-                    icon: 'success',
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false,
-                    timer: 2000
-                }); 
+                showLoading(true, 'อัปโหลดไฟล์เรียบร้อย! กำลังบันทึกข้อมูลหลัก...');
 
                 const formData = collectFormData(fileUrls);
 
-                // 🚀 แก้ไข: เรียกผ่าน API แทน
-                callGAS("saveData", formData)
-                    .then(onSaveSuccess)
-                    .catch(err => onSaveFailure({ message: err.message || err }));
+                // 🚀 saveData ให้ timeout นานขึ้นหน่อย เพราะฝั่ง Apps Script ต้องเขียนชีท
+                // ถ้ามีคนใช้งานพร้อมกันหลายคนอาจต้องรอคิว (LockService)
+                const response = await callGAS("saveData", formData, {
+                    timeoutMs: 45000,
+                    onRetry: (attempt, maxRetries) => {
+                        showLoading(true, `การบันทึกข้อมูลช้ากว่าปกติ กำลังลองใหม่ (${attempt}/${maxRetries - 1})...`);
+                    }
+                });
+
+                onSaveSuccess(response);
 
             } catch (error) {
                 console.error('Form Submission Error:', error);
                 showLoading(false);
-                Swal.fire({
-                    title: 'เกิดข้อผิดพลาดร้ายแรง',
-                    text: 'ไม่สามารถอัปโหลดไฟล์ หรือ บันทึกข้อมูลได้: ' + (error.message || error),
-                    icon: 'error',
-                    confirmButtonText: 'ตกลง'
-                });
+                onSaveFailure({ message: error.message || String(error) });
             }
         });
         
@@ -1485,8 +1651,12 @@
             return true;
         }
 
-        function showLoading(show) {
+        function showLoading(show, text) {
             const loading = document.getElementById('loading');
+            const loadingText = document.getElementById('loading-text');
+            if (loadingText) {
+                loadingText.textContent = text || 'กำลังบันทึกข้อมูล...';
+            }
             if (loading) {
                 if (show) loading.classList.add('show');
                 else loading.classList.remove('show');

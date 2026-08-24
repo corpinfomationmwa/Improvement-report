@@ -926,17 +926,27 @@
             return new Promise(resolve => setTimeout(resolve, ms));
         }
 
-        async function callGASOnce(action, payload, timeoutMs) {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        // ⚠️ หมายเหตุสำคัญ: ห้ามส่ง `signal: AbortController.signal` เข้าไปใน fetch() ตรงๆ
+        // เพราะหน้านี้รันอยู่ใน Google Apps Script HTML Service (sandboxed iframe)
+        // ซึ่งดักจับ fetch() แล้วส่งผ่าน postMessage ระหว่าง iframe - AbortSignal เป็น
+        // object ที่ clone ผ่าน postMessage ไม่ได้ (ไม่ structured-cloneable) จะทำให้เกิด
+        // error "Failed to execute 'postMessage' on 'Window': AbortSignal object could not be cloned"
+        // จึงต้องทำ timeout ด้วย Promise.race แทน (ไม่ได้ยกเลิก request จริงๆ แต่เลิกรอผลลัพธ์)
+        function timeoutPromise(ms) {
+            return new Promise((_, reject) => {
+                setTimeout(() => {
+                    reject(new Error(`หมดเวลาการเชื่อมต่อ (เกิน ${ms / 1000} วินาที) - เซิร์ฟเวอร์อาจกำลังทำงานหนักหรือมีคนใช้งานพร้อมกันจำนวนมาก`));
+                }, ms);
+            });
+        }
 
-            try {
+        async function callGASOnce(action, payload, timeoutMs) {
+            const fetchPromise = (async () => {
                 const response = await fetch(GAS_API_URL, {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify({ action: action, payload: payload }),
-                    redirect: "follow",
-                    signal: controller.signal
+                    redirect: "follow"
                 });
 
                 if (!response.ok) {
@@ -944,14 +954,9 @@
                 }
 
                 return await response.text();
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    throw new Error(`หมดเวลาการเชื่อมต่อ (เกิน ${timeoutMs / 1000} วินาที) - เซิร์ฟเวอร์อาจกำลังทำงานหนักหรือมีคนใช้งานพร้อมกันจำนวนมาก`);
-                }
-                throw error;
-            } finally {
-                clearTimeout(timeoutId);
-            }
+            })();
+
+            return Promise.race([fetchPromise, timeoutPromise(timeoutMs)]);
         }
 
         // callGAS: เรียก Apps Script พร้อม timeout และ retry อัตโนมัติ

@@ -1691,11 +1691,24 @@
             const selectedAffiliation = affiliationSelect.value;
 
             departmentSelect.innerHTML = '<option value="">ทุกหน่วยงาน</option>';
-            if (selectedAffiliation && departmentData[selectedAffiliation]) {
-                departmentData[selectedAffiliation].forEach(department => {
-                    departmentSelect.appendChild(new Option(department, department));
+            
+            if (selectedAffiliation) {
+                // ดึง unique departments จากข้อมูลจริงใน ALL_DATA ที่ตรงกับสายงานที่เลือก
+                const depsFromData = new Set(
+                    ALL_DATA
+                        .filter(r => (r['executive_affiliation'] || r['recorder_affiliation'] || '') === selectedAffiliation)
+                        .map(r => r['executive_department'] || r['recorder_department'] || '')
+                        .filter(d => d)
+                );
+                
+                // รวมกับ departmentData (static) ถ้ามี
+                const staticDeps = (departmentData[selectedAffiliation] || []);
+                const allDeps = new Set([...depsFromData, ...staticDeps]);
+                
+                allDeps.forEach(dep => {
+                    departmentSelect.appendChild(new Option(dep, dep));
                 });
-                departmentSelect.disabled = false;
+                departmentSelect.disabled = allDeps.size === 0;
             } else {
                 departmentSelect.disabled = true;
             }
@@ -1954,10 +1967,18 @@
             const text = document.getElementById('search-text').value.toLowerCase();
             
             currentFilteredData = ALL_DATA.filter(r => {
-                const searchStr = (r['executive_name'] + r['executive_surname'] + r['communication_topics_json']).toLowerCase();
+                // รองรับทั้ง executive และ recorder field เพื่อให้กรองได้แน่นอน
+                const recordAff = r['executive_affiliation'] || r['recorder_affiliation'] || '';
+                const recordDep = r['executive_department'] || r['recorder_department'] || '';
+                const searchStr = (
+                    (r['executive_name'] || '') + ' ' +
+                    (r['executive_surname'] || '') + ' ' +
+                    (r['recorder_name'] || '') + ' ' +
+                    (r['communication_topics_json'] || '')
+                ).toLowerCase();
                 return (!month || r['communication_month'] === month) &&
-                       (!aff || r['executive_affiliation'] === aff) &&
-                       (!dep || r['executive_department'] === dep) &&
+                       (!aff || recordAff === aff) &&
+                       (!dep || recordDep === dep) &&
                        (!text || searchStr.includes(text));
             });
             currentPage = 1;

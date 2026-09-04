@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="th">
 <head>
@@ -995,7 +996,78 @@
         let currentPage = 1;
         const rowsPerPage = 20; 
         
-        let departmentData = {}; 
+        // ข้อมูลสายงาน/หน่วยงาน (fallback ถ้า GAS ยังไม่พร้อม)
+        let departmentData = {
+            "สายงานผู้ว่าการ": [
+                "ผู้ว่าการ", "สำนักผู้ว่าการ", "ฝ่ายสื่อสารองค์กร",
+                "ฝ่ายบริหารความรับผิดชอบต่อสังคม", "สำนักคณะกรรมการการประปานครหลวง",
+                "ฝ่ายธรรมาภิบาล", "ฝ่ายกิจการคณะกรรมการ กปน.", "สำนักตรวจสอบ",
+                "ฝ่ายพัฒนาและตรวจสอบกระบวนงานสนับสนุน", "ฝ่ายตรวจสอบกระบวนงานหลัก"
+            ],
+            "สายงานบริหาร": [
+                "รองผู้ว่าการ (บริหาร)", "ผู้ช่วยผู้ว่าการ (ทรัพยากรบุคคล)",
+                "ฝ่ายบริหารทรัพยากรบุคคล", "ฝ่ายสวัสดิการและกิจการสัมพันธ์",
+                "ฝ่ายพัฒนาทรัพยากรบุคคล", "ผู้ช่วยผู้ว่าการ (บริหาร)",
+                "ฝ่ายกฎหมาย", "ฝ่ายบริการกลาง", "ฝ่ายจัดหาและพัสดุ"
+            ],
+            "สายงานการเงิน": [
+                "รองผู้ว่าการ (การเงิน)", "ผู้ช่วยผู้ว่าการ (การเงิน)",
+                "ฝ่ายตรวจจ่าย", "ฝ่ายการเงิน",
+                "ผู้ช่วยผู้ว่าการ (บัญชี)", "ฝ่ายบัญชี", "ฝ่ายงบประมาณ"
+            ],
+            "สายงานแผนและพัฒนา": [
+                "รองผู้ว่าการ (แผนและพัฒนา)", "ผู้ช่วยผู้ว่าการ (แผนและพัฒนา)",
+                "ฝ่ายนโยบายและยุทธศาสตร์", "ฝ่ายบริหารความเสี่ยง",
+                "ผู้ช่วยผู้ว่าการ (ธุรกิจ)", "ฝ่ายพัฒนาธุรกิจ", "ฝ่ายนวัตกรรมองค์กร"
+            ],
+            "สายงานบริการด้านตะวันออก": [
+                "รองผู้ว่าการ (บริการด้านตะวันออก)", "ผู้ช่วยผู้ว่าการ (บริการ 1)",
+                "สำนักงานประปาสาขาสุขุมวิท", "สำนักงานประปาสาขาพระโขนง",
+                "สำนักงานประปาสาขาสมุทรปราการ", "สำนักงานประปาสาขาทุ่งมหาเมฆ",
+                "ผู้ช่วยผู้ว่าการ (บริการ 2)", "สำนักงานประปาสาขาแม้นศรี",
+                "สำนักงานประปาสาขาพญาไท", "สำนักงานประปาสาขาลาดพร้าว",
+                "ฝ่ายการตลาดและลูกค้าสัมพันธ์", "ผู้ช่วยผู้ว่าการ (บริการ 3)",
+                "สำนักงานประปาสาขาประชาชื่น", "สำนักงานประปาสาขาบางเขน",
+                "สำนักงานประปาสาขามีนบุรี", "สำนักงานประปาสาขาสุวรรณภูมิ"
+            ],
+            "สายงานบริการด้านตะวันตก": [
+                "รองผู้ว่าการ (บริการด้านตะวันตก)", "ผู้ช่วยผู้ว่าการ (บริการ 4)",
+                "สำนักงานประปาสาขาตากสิน", "สำนักงานประปาสาขาสุขสวัสดิ์",
+                "สำนักงานประปาสาขาบางกอกน้อย", "สำนักงานประปาสาขาภาษีเจริญ",
+                "ผู้ช่วยผู้ว่าการ (บริการ 5)", "สำนักงานประปาสาขานนทบุรี",
+                "สำนักงานประปาสาขาบางบัวทอง", "สำนักงานประปาสาขามหาสวัสดิ์",
+                "ฝ่ายสนับสนุนงานบริการ", "ผู้ช่วยผู้ว่าการ (บริการ)",
+                "ฝ่ายบริหารจัดการน้ำสูญเสีย", "ฝ่ายมาตรวัดน้ำ",
+                "ผู้ช่วยผู้ว่าการ (ระบบส่งและจ่ายน้ำ)",
+                "ฝ่ายควบคุมการส่งและจ่ายน้ำ", "ฝ่ายสถานีสูบจ่ายน้ำ"
+            ],
+            "สายงานผลิตน้ำ": [
+                "รองผู้ว่าการ (ผลิตน้ำ)", "ฝ่ายวางแผนและวิศวกรรมระบบผลิต",
+                "ผู้ช่วยผู้ว่าการ (ระบบผลิตน้ำ)", "ฝ่ายโรงงานผลิตน้ำมหาสวัสดิ์",
+                "ฝ่ายโรงงานผลิตน้ำสามเสนและธนบุรี", "ฝ่ายโรงงานผลิตน้ำบางเขน",
+                "ผู้ช่วยผู้ว่าการ (แหล่งน้ำและคุณภาพน้ำ)",
+                "ฝ่ายทรัพยากรน้ำและสิ่งแวดล้อม", "ฝ่ายระบบส่งน้ำดิบ", "ฝ่ายคุณภาพน้ำ",
+                "ผู้ช่วยผู้ว่าการ (บำรุงรักษา)", "ฝ่ายบำรุงรักษาระบบไฟฟ้า",
+                "ฝ่ายบำรุงรักษาระบบเครื่องกลและโยธา", "ฝ่ายบำรุงรักษาระบบอัตโนมัติและเครื่องวัด"
+            ],
+            "สายงานวิศวกรรม": [
+                "รองผู้ว่าการ (วิศวกรรม)", "ผู้ช่วยผู้ว่าการ (ก่อสร้าง)",
+                "ฝ่ายก่อสร้างระบบผลิตส่งน้ำและงานโยธา",
+                "ฝ่ายก่อสร้างระบบจ่ายน้ำ 1", "ฝ่ายก่อสร้างระบบจ่ายน้ำ 2",
+                "ผู้ช่วยผู้ว่าการ (วิศวกรรม)", "ฝ่ายออกแบบระบบจ่ายน้ำ",
+                "ฝ่ายมาตรฐานวิศวกรรมและสารสนเทศภูมิศาสตร์",
+                "ฝ่ายออกแบบระบบผลิตส่งน้ำและงานโยธา",
+                "ผู้ช่วยผู้ว่าการ (สำนักบริหารโครงการ)",
+                "ฝ่ายบริหารโครงการ", "ฝ่ายโครงการปรับปรุงกิจการประปาแผนหลัก"
+            ],
+            "สายงานเทคโนโลยีดิจิทัล": [
+                "รองผู้ว่าการ (เทคโนโลยีดิจิทัล)",
+                "ผู้ช่วยผู้ว่าการ (เทคโนโลยีดิจิทัล)",
+                "ฝ่ายพัฒนาระบบงานดิจิทัล",
+                "ฝ่ายโครงสร้างพื้นฐานเทคโนโลยีดิจิทัล",
+                "ฝ่ายยุทธศาสตร์และนวัตกรรมดิจิทัล"
+            ]
+        };
 
         const communicationTopicsData = [
             "Water Safety Plan/การสร้างความเชื่อมั่นด้านคุณภาพน้ำประปา",
@@ -1691,11 +1763,24 @@
             const selectedAffiliation = affiliationSelect.value;
 
             departmentSelect.innerHTML = '<option value="">ทุกหน่วยงาน</option>';
-            if (selectedAffiliation && departmentData[selectedAffiliation]) {
-                departmentData[selectedAffiliation].forEach(department => {
-                    departmentSelect.appendChild(new Option(department, department));
+            
+            if (selectedAffiliation) {
+                // ดึง unique departments จากข้อมูลจริงใน ALL_DATA ที่ตรงกับสายงานที่เลือก
+                const depsFromData = new Set(
+                    ALL_DATA
+                        .filter(r => (r['executive_affiliation'] || r['recorder_affiliation'] || '') === selectedAffiliation)
+                        .map(r => r['executive_department'] || r['recorder_department'] || '')
+                        .filter(d => d)
+                );
+                
+                // รวมกับ departmentData (static) ถ้ามี
+                const staticDeps = (departmentData[selectedAffiliation] || []);
+                const allDeps = new Set([...depsFromData, ...staticDeps]);
+                
+                allDeps.forEach(dep => {
+                    departmentSelect.appendChild(new Option(dep, dep));
                 });
-                departmentSelect.disabled = false;
+                departmentSelect.disabled = allDeps.size === 0;
             } else {
                 departmentSelect.disabled = true;
             }
@@ -1954,10 +2039,18 @@
             const text = document.getElementById('search-text').value.toLowerCase();
             
             currentFilteredData = ALL_DATA.filter(r => {
-                const searchStr = (r['executive_name'] + r['executive_surname'] + r['communication_topics_json']).toLowerCase();
+                // รองรับทั้ง executive และ recorder field เพื่อให้กรองได้แน่นอน
+                const recordAff = r['executive_affiliation'] || r['recorder_affiliation'] || '';
+                const recordDep = r['executive_department'] || r['recorder_department'] || '';
+                const searchStr = (
+                    (r['executive_name'] || '') + ' ' +
+                    (r['executive_surname'] || '') + ' ' +
+                    (r['recorder_name'] || '') + ' ' +
+                    (r['communication_topics_json'] || '')
+                ).toLowerCase();
                 return (!month || r['communication_month'] === month) &&
-                       (!aff || r['executive_affiliation'] === aff) &&
-                       (!dep || r['executive_department'] === dep) &&
+                       (!aff || recordAff === aff) &&
+                       (!dep || recordDep === dep) &&
                        (!text || searchStr.includes(text));
             });
             currentPage = 1;
@@ -2406,22 +2499,19 @@
         document.addEventListener('DOMContentLoaded', async function() {
             showLoading(true);
 
+            // ดึงข้อมูลสายงานจาก GAS ถ้าได้ก็ใช้ ถ้าไม่ได้ใช้ fallback ที่กำหนดไว้แล้ว
             try {
-                // 🚀 แก้ไข: เรียกผ่าน API เพื่อดึงข้อมูล Dropdown
-                departmentData = await new Promise(async (resolve, reject) => {
-                    try {
-                        const response = await callGAS("getDepartmentData");
-                        const result = JSON.parse(response);
-                        if (result.status === 'success') {
-                            resolve(result.data);
-                        } else {
-                            reject(new Error(result.message || 'Unknown error'));
-                        }
-                    } catch (e) {
-                        reject(e);
-                    }
-                });
+                const response = await callGAS("getDepartmentData", null, { timeoutMs: 10000, maxRetries: 1 });
+                const result = JSON.parse(response);
+                if (result.status === 'success' && Object.keys(result.data).length > 0) {
+                    departmentData = result.data;
+                }
+            } catch (e) {
+                console.warn('ใช้ข้อมูลสายงาน fallback เพราะ:', e.message);
+            }
 
+            // populate dropdowns ด้วย departmentData (fallback หรือจาก GAS)
+            try {
                 const affiliations = Object.keys(departmentData);
                 const recorderAffiliationSelect = document.getElementById('recorder-affiliation');
                 const executiveAffiliationSelect = document.getElementById('executive-affiliation');
@@ -2434,7 +2524,7 @@
                     if (searchAffiliationSelect) searchAffiliationSelect.appendChild(new Option(aff, aff));
                     if (dashboardAffiliationSelect) dashboardAffiliationSelect.appendChild(new Option(aff, aff));
                 });
-                
+
                 initializeDepartmentChart();
                 initializeTopicsChart();
                 initializeChannelsChart();
@@ -2443,11 +2533,11 @@
                 fetchAndRenderData();
 
             } catch (error) {
-                console.error('Fatal Error Loading Config:', error);
+                console.error('Error initializing app:', error);
                 showLoading(false);
                 Swal.fire({
-                    title: 'เกิดข้อผิดพลาดร้ายแรง!',
-                    text: 'ไม่สามารถโหลดข้อมูลสายงานจากระบบได้! \n\nError: ' + (error.message || error),
+                    title: 'เกิดข้อผิดพลาด',
+                    text: 'ไม่สามารถเริ่มต้นระบบได้: ' + (error.message || error),
                     icon: 'error',
                     confirmButtonText: 'ตกลง'
                 });
